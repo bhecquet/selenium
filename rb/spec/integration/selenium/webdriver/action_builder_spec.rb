@@ -38,7 +38,7 @@ module Selenium
           expect(driver.find_element(id: 'result').text.strip).to be_empty
         end
 
-        it 'can send keys with shift pressed', except: {browser: %i[edge safari safari_preview]} do
+        it 'can send keys with shift pressed', except: {browser: %i[safari safari_preview]} do
           driver.navigate.to url_for('javascriptPage.html')
 
           event_input = driver.find_element(id: 'theworks')
@@ -50,10 +50,11 @@ module Selenium
           wait.until { event_input.attribute(:value).length == 2 }
 
           expect(event_input.attribute(:value)).to eq('AB')
-          expect(keylogger.text.strip).to match(/^(focus )?keydown keydown keypress keyup keydown keypress keyup keyup$/)
+          expected = keylogger.text.strip
+          expect(expected).to match(/^(focus )?keydown keydown keypress keyup keydown keypress keyup keyup$/)
         end
 
-        it 'can press and release modifier keys', expect: {browser: :edge} do
+        it 'can press and release modifier keys' do
           driver.navigate.to url_for('javascriptPage.html')
 
           event_input = driver.find_element(id: 'theworks')
@@ -143,7 +144,7 @@ module Selenium
           expect(text).to eq('Dropped!')
         end
 
-        it 'double clicks an element', except: {browser: %i[chrome safari safari_preview]} do
+        it 'double clicks an element', except: {browser: %i[safari safari_preview]} do
           driver.navigate.to url_for('javascriptPage.html')
           element = driver.find_element(id: 'doubleClickField')
 
@@ -159,7 +160,8 @@ module Selenium
           expect(element.attribute(:value)).to eq('ContextClicked')
         end
 
-        it 'can release pressed buttons via release action', except: {browser: :safari}, only: {browser: %i[edge firefox ie]} do
+        it 'can release pressed buttons via release action', except: [{browser: %i[safari safari_preview]},
+                                                                      {driver: :remote, browser: :ie}] do
           driver.navigate.to url_for('javascriptPage.html')
 
           event_input = driver.find_element(id: 'clickField')

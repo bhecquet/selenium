@@ -21,71 +21,36 @@ require_relative '../spec_helper'
 
 module Selenium
   module WebDriver
-    describe Firefox, only: {browser: %i[firefox]} do
-      it 'creates default capabilities' do
-        create_driver! do |driver|
-          caps = driver.capabilities
-          expect(caps.proxy).to be_nil
-          expect(caps.browser_version).to match(/^\d\d\./)
-          expect(caps.platform_name).not_to be_nil
+    module Firefox
+      describe Driver, exclusive: {browser: :firefox} do
+        describe '#print_options' do
+          let(:magic_number) { 'JVBER' }
 
-          expect(caps.accept_insecure_certs).to be == false
-          expect(caps.page_load_strategy).to be == 'normal'
-          expect(caps.implicit_timeout).to be_zero
-          expect(caps.page_load_timeout).to be == 300000
-          expect(caps.script_timeout).to be == 30000
-        end
-      end
+          before { driver.navigate.to url_for('printPage.html') }
 
-      it 'has remote session ID', only: {driver: :remote} do
-        create_driver! do |driver|
-          expect(driver.capabilities.remote_session_id).to be_truthy
-        end
-      end
-
-      it 'takes a binary path as an argument', only: {driver: :firefox} do
-        skip "Set ENV['ALT_FIREFOX_BINARY'] to test this" unless ENV['ALT_FIREFOX_BINARY']
-
-        begin
-          path = Firefox::Binary.path
-          default_version = nil
-
-          create_driver! do |driver|
-            default_version = driver.capabilities.version
-            expect { driver.capabilities.browser_version }.not_to raise_exception
+          it 'should return base64 for print command' do
+            expect(driver.print_page).to include(magic_number)
           end
 
-          caps = Remote::Capabilities.firefox(firefox_options: {binary: ENV['ALT_FIREFOX_BINARY']})
-          create_driver!(desired_capabilities: caps) do |driver|
-            expect(driver.capabilities.version).not_to eql(default_version)
-            expect { driver.capabilities.browser_version }.not_to raise_exception
+          it 'should print with orientation' do
+            expect(driver.print_page(orientation: 'landscape')).to include(magic_number)
           end
-        ensure
-          Firefox::Binary.path = path
+
+          it 'should print with valid params' do
+            expect(driver.print_page(orientation: 'landscape',
+                                     page_ranges: ['1-2'],
+                                     page: {width: 30})).to include(magic_number)
+          end
+
+          it 'should print full page' do
+            path = "#{Dir.tmpdir}/test#{SecureRandom.urlsafe_base64}.png"
+            screenshot = driver.save_full_page_screenshot(path)
+            expect(IO.read(screenshot)[0x10..0x18].unpack('NN').last).to be > 2600
+          ensure
+            File.delete(path) if File.exist?(path)
+          end
         end
       end
-
-      it 'gives precedence to firefox options versus argument switch', only: {driver: :firefox} do
-        skip "Set ENV['ALT_FIREFOX_BINARY'] to test this" unless ENV['ALT_FIREFOX_BINARY']
-
-        begin
-          path = Firefox::Binary.path
-          default_version = nil
-
-          create_driver! do |driver|
-            default_version = driver.capabilities.version
-            expect { driver.capabilities.browser_version }.not_to raise_exception
-          end
-
-          caps = Remote::Capabilities.firefox(firefox_options: {binary: ENV['ALT_FIREFOX_BINARY']})
-          create_driver!(desired_capabilities: caps, driver_opts: {binary: path}) do |driver|
-            expect(driver.capabilities.version).not_to eql(default_version)
-            expect { driver.capabilities.browser_version }.not_to raise_exception
-          end
-        ensure
-          Firefox::Binary.path = path
-        end
-      end
-    end
+    end # Firefox
   end # WebDriver
 end # Selenium

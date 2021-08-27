@@ -103,8 +103,8 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   static unsigned int WINAPI ScriptWaitThreadProc(LPVOID lpParameter);
   static unsigned int WINAPI DelayPostMessageThreadProc(LPVOID lpParameter);
 
-  std::string current_browser_id(void) const { 
-    return this->current_browser_id_; 
+  std::string current_browser_id(void) const {
+    return this->current_browser_id_;
   }
   void set_current_browser_id(const std::string& browser_id) {
     this->current_browser_id_ = browser_id;
@@ -142,10 +142,10 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   IElementManager* element_manager(void) { return this; }
 
   unsigned long long implicit_wait_timeout(void) const {
-    return this->implicit_wait_timeout_; 
+    return this->implicit_wait_timeout_;
   }
   void set_implicit_wait_timeout(const unsigned long long timeout) {
-    this->implicit_wait_timeout_ = timeout; 
+    this->implicit_wait_timeout_ = timeout;
   }
 
   long long  async_script_timeout(void) const { return this->async_script_timeout_;  }
@@ -160,12 +160,12 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
 
   bool is_valid(void) const { return this->is_valid_; }
   void set_is_valid(const bool session_is_valid) {
-    this->is_valid_ = session_is_valid; 
+    this->is_valid_ = session_is_valid;
   }
 
   bool is_quitting(void) const { return this->is_quitting_; }
   void set_is_quitting(const bool session_is_quitting) {
-    this->is_quitting_ = session_is_quitting; 
+    this->is_quitting_ = session_is_quitting;
   }
 
   std::string unexpected_alert_behavior(void) const {
@@ -194,6 +194,20 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   }
   void set_file_upload_dialog_timeout(const int file_upload_dialog_timeout) {
     this->file_upload_dialog_timeout_ = file_upload_dialog_timeout;
+  }
+
+  bool is_edge_mode(void) const {
+    return this->is_edge_chromium_;
+  }
+  void set_is_edge_mode(bool value) {
+    this->is_edge_chromium_ = value;
+  }
+
+  std::string edge_executable_path(void) const {
+    return this->edge_executable_path_;
+  }
+  void set_edge_executable_path(std::string path) {
+    this->edge_executable_path_ = path;
   }
 
   bool use_strict_file_interactability(void) const {
@@ -282,6 +296,8 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   bool use_legacy_file_upload_dialog_handling_;
   bool enable_full_page_screenshot_;
   bool use_strict_file_interactability_;
+  bool is_edge_chromium_;
+  std::string edge_executable_path_;
   bool attach_existing_browser_;
 
   Command current_command_;

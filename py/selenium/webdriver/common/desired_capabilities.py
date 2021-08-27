@@ -50,36 +50,29 @@ class DesiredCapabilities(object):
     FIREFOX = {
         "browserName": "firefox",
         "acceptInsecureCerts": True,
+        "moz:debuggerAddress": True,
     }
 
     INTERNETEXPLORER = {
         "browserName": "internet explorer",
-        "version": "",
-        "platform": "WINDOWS",
+        "platformName": "WINDOWS",
     }
 
     EDGE = {
         "browserName": "MicrosoftEdge",
-        "version": "",
-        "platform": "WINDOWS"
     }
 
     CHROME = {
         "browserName": "chrome",
-        "version": "",
-        "platform": "ANY",
     }
 
     OPERA = {
         "browserName": "opera",
-        "version": "",
-        "platform": "ANY",
     }
 
     SAFARI = {
         "browserName": "safari",
-        "version": "",
-        "platform": "MAC",
+        "platformName": "MAC",
     }
 
     HTMLUNIT = {
@@ -107,20 +100,13 @@ class DesiredCapabilities(object):
         "platform": "MAC",
     }
 
-    ANDROID = {
-        "browserName": "android",
-        "version": "",
-        "platform": "ANDROID",
-    }
-
-    PHANTOMJS = {
-        "browserName": "phantomjs",
+    WEBKITGTK = {
+        "browserName": "MiniBrowser",
         "version": "",
         "platform": "ANY",
-        "javascriptEnabled": True,
     }
 
-    WEBKITGTK = {
+    WPEWEBKIT = {
         "browserName": "MiniBrowser",
         "version": "",
         "platform": "ANY",

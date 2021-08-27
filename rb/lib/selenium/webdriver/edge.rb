@@ -19,25 +19,23 @@
 
 require 'net/http'
 
-require 'selenium/webdriver/edge/driver'
-require 'selenium/webdriver/edge/options'
-
 module Selenium
   module WebDriver
     module Edge
-      def self.driver_path=(path)
-        WebDriver.logger.deprecate 'Selenium::WebDriver::Edge#driver_path=',
-                                   'Selenium::WebDriver::Edge::Service#driver_path='
-        Selenium::WebDriver::Edge::Service.driver_path = path
+      autoload :Features, 'selenium/webdriver/edge/features'
+      autoload :Driver, 'selenium/webdriver/edge/driver'
+      autoload :Profile, 'selenium/webdriver/edge/profile'
+      autoload :Options, 'selenium/webdriver/edge/options'
+      autoload :Service, 'selenium/webdriver/edge/service'
+
+      def self.path=(path)
+        Platform.assert_executable path
+        @path = path
       end
 
-      def self.driver_path
-        WebDriver.logger.deprecate 'Selenium::WebDriver::Edge#driver_path',
-                                   'Selenium::WebDriver::Edge::Service#driver_path'
-        Selenium::WebDriver::Edge::Service.driver_path
+      def self.path
+        @path ||= nil
       end
     end # Edge
   end # WebDriver
 end # Selenium
-
-require 'selenium/webdriver/edge/service'

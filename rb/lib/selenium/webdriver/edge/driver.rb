@@ -17,6 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+require 'selenium/webdriver/chrome/driver'
+
 module Selenium
   module WebDriver
     module Edge
@@ -26,43 +28,15 @@ module Selenium
       # @api private
       #
 
-      class Driver < WebDriver::Driver
-        include DriverExtensions::HasWebStorage
-        include DriverExtensions::TakesScreenshot
-
-        def initialize(opts = {})
-          opts[:desired_capabilities] = create_capabilities(opts)
-
-          opts[:url] ||= service_url(opts)
-
-          listener = opts.delete(:listener)
-          desired_capabilities = opts.delete(:desired_capabilities)
-
-          @bridge = Remote::Bridge.new(opts)
-          @bridge.create_session(desired_capabilities)
-
-          super(@bridge, listener: listener)
-        end
-
+      class Driver < Selenium::WebDriver::Chrome::Driver
         def browser
           :edge
         end
 
-        def quit
-          super
-        ensure
-          @service&.stop
-        end
-
         private
 
-        def create_capabilities(opts)
-          caps = opts.delete(:desired_capabilities) { Remote::Capabilities.edge }
-          options = opts.delete(:options) { Options.new }
-          options = options.as_json
-          caps.merge!(options) unless options.empty?
-
-          caps
+        def devtools_address
+          "http://#{capabilities['ms:edgeOptions']['debuggerAddress']}"
         end
       end # Driver
     end # Edge

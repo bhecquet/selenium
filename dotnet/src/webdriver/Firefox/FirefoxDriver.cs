@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using OpenQA.Selenium.DevTools;
 using OpenQA.Selenium.Remote;
 
 namespace OpenQA.Selenium.Firefox
@@ -65,9 +66,16 @@ namespace OpenQA.Selenium.Firefox
     /// }
     /// </code>
     /// </example>
-    public class FirefoxDriver : RemoteWebDriver
+    public class FirefoxDriver : WebDriver, IDevTools
     {
+        private const int FirefoxDevToolsProtocolVersion = 85;
+        private const string FirefoxDevToolsCapabilityName = "moz:debuggerAddress";
         private const string SetContextCommand = "setContext";
+        private const string InstallAddOnCommand = "installAddOn";
+        private const string UninstallAddOnCommand = "uninstallAddOn";
+        private const string GetFullPageScreenshotCommand = "fullPageScreenshot";
+
+        private DevToolsSession devToolsSession;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FirefoxDriver"/> class.
@@ -148,7 +156,10 @@ namespace OpenQA.Selenium.Firefox
             : base(new DriverServiceCommandExecutor(service, commandTimeout), ConvertOptionsToCapabilities(options))
         {
             // Add the custom commands unique to Firefox
-            this.CommandExecutor.CommandInfoRepository.TryAddCommand(SetContextCommand, new CommandInfo(CommandInfo.PostCommand, "/session/{sessionId}/moz/context"));
+            this.AddCustomFirefoxCommand(SetContextCommand, HttpCommandInfo.PostCommand, "/session/{sessionId}/moz/context");
+            this.AddCustomFirefoxCommand(InstallAddOnCommand, HttpCommandInfo.PostCommand, "/session/{sessionId}/moz/addon/install");
+            this.AddCustomFirefoxCommand(UninstallAddOnCommand, HttpCommandInfo.PostCommand, "/session/{sessionId}/moz/addon/uninstall");
+            this.AddCustomFirefoxCommand(GetFullPageScreenshotCommand, HttpCommandInfo.GetCommand, "/session/{sessionId}/moz/screenshot/full");
         }
 
         /// <summary>
@@ -180,6 +191,116 @@ namespace OpenQA.Selenium.Firefox
         }
 
         /// <summary>
+        /// Installs a Firefox add-on from a file, typically a .xpi file.
+        /// </summary>
+        /// <param name="addOnFileToInstall">Full path and file name of the add-on to install.</param>
+        public void InstallAddOnFromFile(string addOnFileToInstall)
+        {
+            if (string.IsNullOrEmpty(addOnFileToInstall))
+            {
+                throw new ArgumentNullException("addOnFileToInstall", "Add-on file name must not be null or the empty string");
+            }
+
+            if (!File.Exists(addOnFileToInstall))
+            {
+                throw new ArgumentException("File " + addOnFileToInstall + " does not exist", "addOnFileToInstall");
+            }
+
+            // Implementation note: There is a version of the install add-on
+            // command that can be used with a file name directly, by passing
+            // a "path" property in the parameters object of the command. If
+            // delegating to the "use the base64-encoded blob" version causes
+            // issues, we can change this method to use the file name directly
+            // instead.
+            byte[] addOnBytes = File.ReadAllBytes(addOnFileToInstall);
+            string base64AddOn = Convert.ToBase64String(addOnBytes);
+            this.InstallAddOn(base64AddOn);
+        }
+
+        /// <summary>
+        /// Installs a Firefox add-on.
+        /// </summary>
+        /// <param name="base64EncodedAddOn">The base64-encoded string representation of the add-on binary.</param>
+        public void InstallAddOn(string base64EncodedAddOn)
+        {
+            if (string.IsNullOrEmpty(base64EncodedAddOn))
+            {
+                throw new ArgumentNullException("base64EncodedAddOn", "Base64 encoded add-on must not be null or the empty string");
+            }
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            parameters["addon"] = base64EncodedAddOn;
+            this.Execute(InstallAddOnCommand, parameters);
+        }
+
+        /// <summary>
+        /// Uninstalls a Firefox add-on.
+        /// </summary>
+        /// <param name="addOnId">The ID of the add-on to uninstall.</param>
+        public void UninstallAddOn(string addOnId)
+        {
+            if (string.IsNullOrEmpty(addOnId))
+            {
+                throw new ArgumentNullException("addOnId", "Base64 encoded add-on must not be null or the empty string");
+            }
+
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            parameters["id"] = addOnId;
+            this.Execute(UninstallAddOnCommand, parameters);
+        }
+
+        /// <summary>
+        /// Gets a <see cref="Screenshot"/> object representing the image of the full page on the screen.
+        /// </summary>
+        /// <returns>A <see cref="Screenshot"/> object containing the image.</returns>
+        public Screenshot GetFullPageScreenshot()
+        {
+            Response screenshotResponse = this.Execute(GetFullPageScreenshotCommand, null);
+            string base64 = screenshotResponse.Value.ToString();
+            return new Screenshot(base64);
+        }
+
+        /// <summary>
+        /// Creates a session to communicate with a browser using the Chromium Developer Tools debugging protocol.
+        /// </summary>
+        /// <param name="devToolsProtocolVersion">The version of the Chromium Developer Tools protocol to use. Defaults to autodetect the protocol version.</param>
+        /// <returns>The active session to use to communicate with the Chromium Developer Tools debugging protocol.</returns>
+        public DevToolsSession GetDevToolsSession()
+        {
+            return GetDevToolsSession(FirefoxDevToolsProtocolVersion);
+        }
+
+        /// <summary>
+        /// Creates a session to communicate with a browser using the Chromium Developer Tools debugging protocol.
+        /// </summary>
+        /// <param name="devToolsProtocolVersion">The version of the Chromium Developer Tools protocol to use. Defaults to autodetect the protocol version.</param>
+        /// <returns>The active session to use to communicate with the Chromium Developer Tools debugging protocol.</returns>
+        public DevToolsSession GetDevToolsSession(int devToolsProtocolVersion)
+        {
+            if (this.devToolsSession == null)
+            {
+                if (!this.Capabilities.HasCapability(FirefoxDevToolsCapabilityName))
+                {
+                    throw new WebDriverException("Cannot find " + FirefoxDevToolsCapabilityName + " capability for driver");
+                }
+
+                string debuggerAddress = this.Capabilities.GetCapability(FirefoxDevToolsCapabilityName).ToString();
+                try
+                {
+                    DevToolsSession session = new DevToolsSession(debuggerAddress);
+                    session.Start(devToolsProtocolVersion).ConfigureAwait(false).GetAwaiter().GetResult();
+                    this.devToolsSession = session;
+                }
+                catch (Exception e)
+                {
+                    throw new WebDriverException("Unexpected error creating WebSocket DevTools session.", e);
+                }
+            }
+
+            return this.devToolsSession;
+        }
+
+        /// <summary>
         /// In derived classes, the <see cref="PrepareEnvironment"/> method prepares the environment for test execution.
         /// </summary>
         protected virtual void PrepareEnvironment()
@@ -200,6 +321,12 @@ namespace OpenQA.Selenium.Firefox
         private static FirefoxDriverService CreateService(FirefoxOptions options)
         {
             return FirefoxDriverService.CreateDefaultService();
+        }
+
+        private void AddCustomFirefoxCommand(string commandName, string method, string resourcePath)
+        {
+            HttpCommandInfo commandInfoToAdd = new HttpCommandInfo(method, resourcePath);
+            this.CommandExecutor.TryAddCommand(commandName, commandInfoToAdd);
         }
     }
 }

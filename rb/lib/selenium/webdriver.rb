@@ -24,8 +24,8 @@ require 'date'
 require 'json'
 require 'set'
 
-require 'selenium/webdriver/common'
 require 'selenium/webdriver/atoms'
+require 'selenium/webdriver/common'
 require 'selenium/webdriver/version'
 
 module Selenium
@@ -35,13 +35,14 @@ module Selenium
     Rectangle = Struct.new(:x, :y, :width, :height)
     Location  = Struct.new(:latitude, :longitude, :altitude)
 
-    autoload :Chrome,    'selenium/webdriver/chrome'
-    autoload :Edge,      'selenium/webdriver/edge'
-    autoload :Firefox,   'selenium/webdriver/firefox'
-    autoload :IE,        'selenium/webdriver/ie'
-    autoload :Remote,    'selenium/webdriver/remote'
-    autoload :Safari,    'selenium/webdriver/safari'
-    autoload :Support,   'selenium/webdriver/support'
+    autoload :Chrome,     'selenium/webdriver/chrome'
+    autoload :DevTools,   'selenium/webdriver/devtools'
+    autoload :Edge,       'selenium/webdriver/edge'
+    autoload :Firefox,    'selenium/webdriver/firefox'
+    autoload :IE,         'selenium/webdriver/ie'
+    autoload :Remote,     'selenium/webdriver/remote'
+    autoload :Safari,     'selenium/webdriver/safari'
+    autoload :Support,    'selenium/webdriver/support'
 
     # @api private
 

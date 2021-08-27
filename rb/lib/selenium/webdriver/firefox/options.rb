@@ -20,11 +20,20 @@
 module Selenium
   module WebDriver
     module Firefox
-      class Options
-        attr_reader :args, :prefs, :options, :profile
-        attr_accessor :binary, :log_level
+      class Options < WebDriver::Options
+        attr_accessor :debugger_address
 
         KEY = 'moz:firefoxOptions'
+
+        # see: https://firefox-source-docs.mozilla.org/testing/geckodriver/Capabilities.html
+        CAPABILITIES = {binary: 'binary',
+                        args: 'args',
+                        log: 'log',
+                        prefs: 'prefs'}.freeze
+        BROWSER = 'firefox'
+
+        # NOTE: special handling of 'profile' to validate when set instead of when used
+        attr_reader :profile
 
         #
         # Create a new Options instance, only for W3C-capable versions of Firefox.
@@ -42,13 +51,16 @@ module Selenium
         # @option opts [Hash] :options A hash for raw options
         #
 
-        def initialize(**opts)
-          @args = Set.new(opts.delete(:args) || [])
-          @binary = opts.delete(:binary)
-          @profile = process_profile(opts.delete(:profile))
-          @log_level = opts.delete(:log_level)
-          @prefs = opts.delete(:prefs) || {}
-          @options = opts.delete(:options) || {}
+        def initialize(log_level: nil, **opts)
+          @debugger_address = opts.delete(:debugger_address)
+
+          super(**opts)
+
+          @options[:args] ||= []
+          @options[:prefs] ||= {}
+          @options[:log] ||= {level: log_level} if log_level
+
+          process_profile(@options.delete(:profile))
         end
 
         #
@@ -62,22 +74,7 @@ module Selenium
         #
 
         def add_argument(arg)
-          @args << arg
-        end
-
-        #
-        # Add a new option not yet handled by these bindings.
-        #
-        # @example
-        #   options = Selenium::WebDriver::Firefox::Options.new
-        #   options.add_option(:foo, 'bar')
-        #
-        # @param [String, Symbol] name Name of the option
-        # @param [Boolean, String, Integer] value Value of the option
-        #
-
-        def add_option(name, value)
-          @options[name] = value
+          @options[:args] << arg
         end
 
         #
@@ -92,7 +89,7 @@ module Selenium
         #
 
         def add_preference(name, value)
-          prefs[name] = value
+          @options[:prefs][name] = value
         end
 
         #
@@ -123,38 +120,35 @@ module Selenium
         #
 
         def profile=(profile)
-          @profile = process_profile(profile)
+          process_profile(profile)
         end
 
-        #
-        # @api private
-        #
+        def log_level
+          @options.dig(:log, :level)
+        end
 
-        def as_json(*)
-          opts = @options
-
-          opts[:profile] = @profile.encoded if @profile
-          opts[:args] = @args.to_a if @args.any?
-          opts[:binary] = @binary if @binary
-          opts[:prefs] = @prefs unless @prefs.empty?
-          opts[:log] = {level: @log_level} if @log_level
-
-          {KEY => opts}
+        def log_level=(level)
+          @options[:log] = {level: level}
         end
 
         private
 
-        def process_profile(profile)
-          return unless profile
+        def process_browser_options(browser_options)
+          browser_options['moz:debuggerAddress'] = true if @debugger_address
+          options = browser_options[KEY]
+          options['binary'] ||= Firefox.path if Firefox.path
+          options['profile'] = @profile if @profile
+        end
 
-          case profile
-          when Profile
-            profile
-          when String
-            Profile.from_name(profile)
-          else
-            raise Error::WebDriverError, "don't know how to handle profile: #{profile.inspect}"
-          end
+        def process_profile(profile)
+          @profile = case profile
+                     when nil
+                       nil
+                     when Profile
+                       profile
+                     else
+                       Profile.from_name(profile)
+                     end
         end
       end # Options
     end # Firefox

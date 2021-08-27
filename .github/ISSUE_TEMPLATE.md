@@ -12,6 +12,5 @@ about: If you have questions, please check our IRC or Slack
 
 For questions or help please see:
 
-- [SeleniumHQ IRC channel](https://webchat.freenode.net/)
-- [SeleniumHQ Slack channel](https://seleniumhq.herokuapp.com/)
-- The [Selenium Users](https://groups.google.com/forum/#!forum/selenium-users) google group
+- [SeleniumHQ IRC/Slack channel](https://www.selenium.dev/support/)
+- [Selenium Users](https://groups.google.com/forum/#!forum/selenium-users) google group

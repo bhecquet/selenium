@@ -15,107 +15,138 @@
 // specific language governing permissions and limitations
 // under the License.
 
-'use strict';
+'use strict'
 
-const assert = require('assert');
-const fs = require('fs');
+const assert = require('assert')
+const fs = require('fs')
 
-const chrome = require('../../chrome');
-const proxy = require('../../proxy');
-const symbols = require('../../lib/symbols');
-const test = require('../../lib/test');
-const webdriver = require('../..');
+const chrome = require('../../chrome')
+const symbols = require('../../lib/symbols')
+const test = require('../../lib/test')
 
+describe('chrome.Options', function () {
+  describe('addArguments', function () {
+    it('takes var_args', function () {
+      let options = new chrome.Options()
+      assert.deepStrictEqual(options[symbols.serialize](), {
+        browserName: 'chrome',
+        'goog:chromeOptions': {},
+      })
 
-describe('chrome.Options', function() {
-  describe('addArguments', function() {
-    it('takes var_args', function() {
-      let options = new chrome.Options();
-      assert.deepEqual(
-          options[symbols.serialize](),
-          {browserName: 'chrome', 'goog:chromeOptions': {}});
+      options.addArguments('a', 'b')
+      assert.deepStrictEqual(options[symbols.serialize](), {
+        browserName: 'chrome',
+        'goog:chromeOptions': {
+          args: ['a', 'b'],
+        },
+      })
+    })
 
-      options.addArguments('a', 'b');
-      assert.deepEqual(
-          options[symbols.serialize](),
-          {
-            browserName: 'chrome',
-            'goog:chromeOptions': {
-              args: ['a', 'b']
-            }
-          });
-    });
+    it('flattens input arrays', function () {
+      let options = new chrome.Options()
+      assert.deepStrictEqual(options[symbols.serialize](), {
+        browserName: 'chrome',
+        'goog:chromeOptions': {},
+      })
 
-    it('flattens input arrays', function() {
-      let options = new chrome.Options();
-      assert.deepEqual(
-          options[symbols.serialize](),
-          {browserName: 'chrome', 'goog:chromeOptions': {}});
+      options.addArguments(['a', 'b'], 'c', [1, 2], 3)
+      assert.deepStrictEqual(options[symbols.serialize](), {
+        browserName: 'chrome',
+        'goog:chromeOptions': {
+          args: ['a', 'b', 'c', 1, 2, 3],
+        },
+      })
+    })
+  })
 
-      options.addArguments(['a', 'b'], 'c', [1, 2], 3);
-      assert.deepEqual(
-          options[symbols.serialize](),
-          {
-            browserName: 'chrome',
-            'goog:chromeOptions': {
-              args: ['a', 'b', 'c', 1, 2, 3]
-            }
-          });
-    });
-  });
+  describe('addExtensions', function () {
+    it('takes var_args', function () {
+      let options = new chrome.Options()
+      assert.strictEqual(options.options_.extensions, undefined)
 
-  describe('addExtensions', function() {
-    it('takes var_args', function() {
-      let options = new chrome.Options();
-      assert.strictEqual(options.options_.extensions, undefined);
+      options.addExtensions('a', 'b')
+      assert.deepStrictEqual(options.options_.extensions, ['a', 'b'])
+    })
 
-      options.addExtensions('a', 'b');
-      assert.deepEqual(options.options_.extensions, ['a', 'b']);
-    });
+    it('flattens input arrays', function () {
+      let options = new chrome.Options()
+      assert.strictEqual(options.options_.extensions, undefined)
 
-    it('flattens input arrays', function() {
-      let options = new chrome.Options();
-      assert.strictEqual(options.options_.extensions, undefined);
+      options.addExtensions(['a', 'b'], 'c', [1, 2], 3)
+      assert.deepStrictEqual(options.options_.extensions, [
+        'a',
+        'b',
+        'c',
+        1,
+        2,
+        3,
+      ])
+    })
+  })
 
-      options.addExtensions(['a', 'b'], 'c', [1, 2], 3);
-      assert.deepEqual(options.options_.extensions, ['a', 'b', 'c', 1, 2, 3]);
-    });
-  });
-
-  describe('serialize', function() {
-    it('base64 encodes extensions', async function() {
-      let expected = fs.readFileSync(__filename, 'base64');
+  describe('serialize', function () {
+    it('base64 encodes extensions', async function () {
+      let expected = fs.readFileSync(__filename, 'base64')
       let wire = new chrome.Options()
-          .addExtensions(__filename)
-          [symbols.serialize]();
+        .addExtensions(__filename)
+        [symbols.serialize]()
 
-      assert.equal(wire['goog:chromeOptions'].extensions.length, 1);
-      assert.equal(await wire['goog:chromeOptions'].extensions[0], expected);
-    });
-  });
-});
+      assert.strictEqual(wire['goog:chromeOptions'].extensions.length, 1)
+      assert.strictEqual(
+        await wire['goog:chromeOptions'].extensions[0],
+        expected
+      )
+    })
+  })
 
-test.suite(function(env) {
-  var driver;
+  describe('windowTypes', function () {
+    it('takes var_args', function () {
+      let options = new chrome.Options()
+      assert.strictEqual(options.options_.windowTypes, undefined)
 
-  afterEach(function() {
-    return driver.quit();
-  });
+      options.windowTypes('a', 'b')
+      assert.deepStrictEqual(options.options_.windowTypes, ['a', 'b'])
+    })
 
-  describe('Chrome options', function() {
-    it('can start Chrome with custom args', async function() {
-      var options = new chrome.Options().
-          addArguments('user-agent=foo;bar');
+    it('flattens input arrays', function () {
+      let options = new chrome.Options()
+      assert.strictEqual(options.options_.windowTypes, undefined)
 
-      driver = await env.builder()
-          .setChromeOptions(options)
-          .build();
+      options.windowTypes(['a', 'b'], 'c', [1, 2], 3)
+      assert.deepStrictEqual(options.options_.windowTypes, [
+        'a',
+        'b',
+        'c',
+        1,
+        2,
+        3,
+      ])
+    })
+  })
+})
 
-      await driver.get(test.Pages.ajaxyPage);
+test.suite(
+  function (env) {
+    var driver
 
-      var userAgent =
-          await driver.executeScript('return window.navigator.userAgent');
-      assert.equal(userAgent, 'foo;bar');
-    });
-  });
-}, {browsers: ['chrome']});
+    afterEach(function () {
+      return driver.quit()
+    })
+
+    describe('Chrome options', function () {
+      it('can start Chrome with custom args', async function () {
+        var options = new chrome.Options().addArguments('user-agent=foo;bar')
+
+        driver = await env.builder().setChromeOptions(options).build()
+
+        await driver.get(test.Pages.ajaxyPage)
+
+        var userAgent = await driver.executeScript(
+          'return window.navigator.userAgent'
+        )
+        assert.strictEqual(userAgent, 'foo;bar')
+      })
+    })
+  },
+  { browsers: ['chrome'] }
+)
