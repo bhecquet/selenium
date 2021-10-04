@@ -70,6 +70,8 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
     MESSAGE_HANDLER(WD_SCRIPT_WAIT, OnScriptWait)
     MESSAGE_HANDLER(WD_ASYNC_SCRIPT_TRANSFER_MANAGED_ELEMENT, OnTransferManagedElement)
     MESSAGE_HANDLER(WD_ASYNC_SCRIPT_SCHEDULE_REMOVE_MANAGED_ELEMENT, OnScheduleRemoveManagedElement)
+    MESSAGE_HANDLER(WD_BEFORE_EDGE_ATTACH, OnBeforeEdgeAttach)
+    MESSAGE_HANDLER(WD_PREPARE_ATTACH, OnPrepareEdgeAttach)
   END_MSG_MAP()
 
   LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
@@ -95,6 +97,8 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   LRESULT OnScriptWait(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnTransferManagedElement(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnScheduleRemoveManagedElement(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+  LRESULT OnBeforeEdgeAttach(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+  LRESULT OnPrepareEdgeAttach(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
   std::string session_id(void) const { return this->session_id_; }
 
@@ -260,6 +264,9 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   void PostBrowserReattachMessage(const DWORD current_process_id,
                                   const std::string& browser_id,
                                   const std::vector<DWORD>& known_process_ids);
+  void PostBrowserEdgeAttachMessage(const DWORD current_process_id,
+                                  const std::string& browser_id,
+                                  const std::vector<DWORD>& known_process_ids);
   void GetNewBrowserProcessIds(std::vector<DWORD>* known_process_ids,
                                std::vector<DWORD>* new_process_ids);
 
@@ -268,6 +275,7 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   std::string OpenNewBrowserWindow(const std::wstring& url);
   std::string OpenNewBrowserTab(const std::wstring& url);
   static BOOL CALLBACK FindAllBrowserHandles(HWND hwnd, LPARAM arg);
+
 
 
   BrowserMap managed_browsers_;

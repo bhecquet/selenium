@@ -30,6 +30,8 @@
 #include "RegistryUtilities.h"
 #include "Script.h"
 #include "StringUtilities.h"
+#include "Browser.h"
+#include "Browser.h"
 
 namespace webdriver {
 
@@ -301,8 +303,10 @@ HWND DocumentHost::FindContentWindowHandle(HWND top_level_window_handle) {
   process_window_info.dwProcessId = process_id;
 
   ::EnumChildWindows(top_level_window_handle,
-                     &BrowserFactory::FindChildWindowForProcess,
-                     reinterpret_cast<LPARAM>(&process_window_info));
+    &BrowserFactory::FindChildWindowForProcess,
+    reinterpret_cast<LPARAM>(&process_window_info));
+
+  
   return process_window_info.hwndBrowser;
 }
 

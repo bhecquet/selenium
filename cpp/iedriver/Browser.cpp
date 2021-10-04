@@ -41,6 +41,7 @@ Browser::Browser(IWebBrowser2* browser, HWND hwnd, HWND session_handle, bool is_
   this->browser_ = browser;
   this->AttachEvents();
   this->is_edge_chromium_ = is_edge_chromium;
+  this->is_new_edge_window_requested_ = false;
 }
 
 Browser::~Browser(void) {
@@ -115,8 +116,19 @@ void __stdcall Browser::NewWindow3(IDispatch** ppDisp,
                                    BSTR bstrUrl) {
   if (this->is_edge_chromium_) {
     LOG(TRACE) << "Entering Browser::NewWindow3 but early exiting due to edge mode";
-    // In Edge Chromium, we do not yet support attaching to new windows.
-    // Quit early and ignore that event.
+    
+    InitiateEdgeBrowserAttach();
+
+    BrowserReattachInfo* repost_info = new BrowserReattachInfo;
+    repost_info->current_process_id = 0;
+    repost_info->browser_id = "";
+    repost_info->known_process_ids = this->known_process_ids_;
+  
+    ::PostMessage(this->executor_handle(),
+      WD_PREPARE_ATTACH,
+      NULL,
+      reinterpret_cast<LPARAM>(repost_info));
+
     return;
   }
   LOG(TRACE) << "Entering Browser::NewWindow3";
@@ -182,6 +194,14 @@ void __stdcall Browser::DocumentComplete(IDispatch* pDisp, VARIANT* URL) {
       this->SetFocusedFrameByElement(NULL);
     }
   }
+}
+
+void Browser::InitiateEdgeBrowserAttach() {
+  LOG(TRACE) << "Entering Browser::InitiateEdgeBrowserAttach";
+  this->known_process_ids_.clear();
+  WindowUtilities::GetProcessesByName(L"iexplore.exe",
+    &this->known_process_ids_);
+  ::SendMessage(this->executor_handle(), WD_BEFORE_EDGE_ATTACH, NULL, NULL);
 }
 
 void Browser::InitiateBrowserReattach() {
@@ -409,11 +429,7 @@ void Browser::Close() {
   this->SetFocusedFrameByElement(NULL);
 
   HRESULT hr = S_OK;
-  if (this->is_edge_chromium_) {
-    hr = PostMessage(GetTopLevelWindowHandle(), WM_CLOSE, 0, 0);
-  } else {
-    hr = this->browser_->Quit();
-  }
+  hr = this->browser_->Quit();
 
   if (FAILED(hr)) {
     LOGHR(WARN, hr) << "Call to IWebBrowser2::Quit failed";
