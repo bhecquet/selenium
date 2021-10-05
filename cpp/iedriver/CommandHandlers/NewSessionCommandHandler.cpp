@@ -77,7 +77,7 @@ void NewSessionCommandHandler::ExecuteInternal(
   }
 
   error_message = "";
-  int result_code = mutable_executor.CreateNewBrowser(&error_message);
+  int result_code = mutable_executor.CreateNewBrowser(&error_message, mutable_executor.attach_existing_browser());
   if (result_code != WD_SUCCESS) {
     // The browser was not created successfully, therefore the
     // session must be marked as invalid so the server can
@@ -308,6 +308,9 @@ Json::Value NewSessionCommandHandler::ProcessCapabilities(const IECommandExecuto
         ie_options = merged_capabilities[IE_DRIVER_EXTENSIONS_CAPABILITY];
       }
 
+      Json::Value attach_existing_browser = this->GetCapability(ie_options, ATTACH_EXISTING_BROWSER, Json::booleanValue, false);
+      mutable_executor.set_attach_existing_browser(attach_existing_browser.asBool());
+
       this->SetBrowserFactorySettings(executor, ie_options);
 
       this->SetInputSettings(executor, ie_options);
@@ -537,6 +540,7 @@ Json::Value NewSessionCommandHandler::CreateReturnedCapabilities(const IECommand
   capabilities[ACCEPT_INSECURE_CERTS_CAPABILITY] = false;
   capabilities[PAGE_LOAD_STRATEGY_CAPABILITY] = executor.page_load_strategy();
   capabilities[STRICT_FILE_INTERACTABILITY_CAPABILITY] = executor.use_strict_file_interactability();
+  capabilities[ATTACH_EXISTING_BROWSER] = executor.attach_existing_browser();
   capabilities[SET_WINDOW_RECT_CAPABILITY] = true;
 
   if (executor.unexpected_alert_behavior().size() > 0) {

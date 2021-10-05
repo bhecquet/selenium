@@ -70,6 +70,8 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
     MESSAGE_HANDLER(WD_SCRIPT_WAIT, OnScriptWait)
     MESSAGE_HANDLER(WD_ASYNC_SCRIPT_TRANSFER_MANAGED_ELEMENT, OnTransferManagedElement)
     MESSAGE_HANDLER(WD_ASYNC_SCRIPT_SCHEDULE_REMOVE_MANAGED_ELEMENT, OnScheduleRemoveManagedElement)
+    MESSAGE_HANDLER(WD_BEFORE_EDGE_ATTACH, OnBeforeEdgeAttach)
+    MESSAGE_HANDLER(WD_PREPARE_ATTACH, OnPrepareEdgeAttach)
   END_MSG_MAP()
 
   LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
@@ -95,6 +97,8 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   LRESULT OnScriptWait(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnTransferManagedElement(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
   LRESULT OnScheduleRemoveManagedElement(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+  LRESULT OnBeforeEdgeAttach(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+  LRESULT OnPrepareEdgeAttach(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
   std::string session_id(void) const { return this->session_id_; }
 
@@ -110,7 +114,7 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
     this->current_browser_id_ = browser_id;
   }
 
-  int CreateNewBrowser(std::string* error_message);
+  int CreateNewBrowser(std::string* error_message, bool attach_existing_browser);
   std::string OpenNewBrowsingContext(const std::string& window_type);
 
   int GetManagedBrowser(const std::string& browser_id,
@@ -215,6 +219,12 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   void set_use_strict_file_interactability(const bool use_strict_file_interactability) {
     this->use_strict_file_interactability_ = use_strict_file_interactability;
   }
+  bool attach_existing_browser(void) const {
+    return this->attach_existing_browser_;
+  }
+  void set_attach_existing_browser(const bool use_strict_file_interactability) {
+    this->attach_existing_browser_ = use_strict_file_interactability;
+  }
 
   ElementFinder* element_finder(void) const { return this->element_finder_; }
   InputManager* input_manager(void) const { return this->input_manager_; }
@@ -251,6 +261,9 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
                              std::string* alert_text);
 
   void PostBrowserReattachMessage(const DWORD current_process_id,
+                                  const std::string& browser_id,
+                                  const std::vector<DWORD>& known_process_ids);
+  void PostBrowserEdgeAttachMessage(const DWORD current_process_id,
                                   const std::string& browser_id,
                                   const std::vector<DWORD>& known_process_ids);
   void GetNewBrowserProcessIds(std::vector<DWORD>* known_process_ids,
@@ -290,6 +303,7 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   bool use_strict_file_interactability_;
   bool is_edge_chromium_;
   std::string edge_executable_path_;
+  bool attach_existing_browser_;
 
   Command current_command_;
   std::string serialized_response_;

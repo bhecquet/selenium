@@ -240,7 +240,7 @@ bool BrowserFactory::IsIELaunchURLAvailable() {
     FARPROC proc_address = 0;
     proc_address = ::GetProcAddress(library_handle, IELAUNCHURL_FUNCTION_NAME);
     if (proc_address == NULL || proc_address == 0) {
-      LOGERR(DEBUG) << "Unable to get address of " << IELAUNCHURL_FUNCTION_NAME 
+      LOGERR(DEBUG) << "Unable to get address of " << IELAUNCHURL_FUNCTION_NAME
                     << " method in " << IEFRAME_LIBRARY_NAME;
     } else {
       api_is_available = true;
@@ -458,7 +458,7 @@ bool BrowserFactory::AttachToBrowser(ProcessWindowInfo* process_window_info,
       zoom_level = this->GetBrowserZoomLevel(process_window_info->pBrowser);
     }
     if (zoom_level != 100) {
-      std::string zoom_level_error = 
+      std::string zoom_level_error =
           StringUtilities::Format(ZOOM_SETTING_ERROR_MESSAGE, zoom_level);
       LOG(WARN) << zoom_level_error;
       *error_message = zoom_level_error;
@@ -475,8 +475,14 @@ bool BrowserFactory::IsBrowserProcessInitialized(DWORD process_id) {
   info.hwndBrowser = NULL;
   info.pBrowser = NULL;
 
-  ::EnumWindows(&BrowserFactory::FindBrowserWindow,
-                reinterpret_cast<LPARAM>(&info));
+  if (!this->edge_ie_mode_) {
+    ::EnumWindows(&BrowserFactory::FindBrowserWindow,
+                  reinterpret_cast<LPARAM>(&info));
+  } else {
+    // If we're in edge_ie_mode, we need to look for different windows
+    ::EnumWindows(&BrowserFactory::FindEdgeWindow,
+                  reinterpret_cast<LPARAM>(&info));
+  }
   return info.hwndBrowser != NULL;
 }
 
@@ -610,9 +616,18 @@ bool BrowserFactory::AttachToBrowserUsingShellWindows(
         HWND hwnd;
         hr = shell_browser->GetWindow(&hwnd);
         if (SUCCEEDED(hr)) {
-          ::EnumChildWindows(hwnd,
-                             &BrowserFactory::FindChildWindowForProcess, 
-                             reinterpret_cast<LPARAM>(process_window_info));
+
+          if (!this->edge_ie_mode_) {
+            ::EnumChildWindows(hwnd,
+              &BrowserFactory::FindChildWindowForProcess,
+              reinterpret_cast<LPARAM>(process_window_info));
+          }
+          else {
+            ::EnumChildWindows(hwnd,
+              &BrowserFactory::FindEdgeChildWindowForProcess,
+              reinterpret_cast<LPARAM>(process_window_info));
+          }
+
           if (process_window_info->hwndBrowser != NULL) {
             LOG(DEBUG) << "Found window handle "
                        << process_window_info->hwndBrowser
@@ -823,7 +838,7 @@ IWebBrowser2* BrowserFactory::CreateBrowser(bool is_protected_mode) {
                 << "be successfully created.";
   }
   clock_t timeout = clock() + (45 * CLOCKS_PER_SEC);
-  while (FAILED(hr) && 
+  while (FAILED(hr) &&
          HRESULT_CODE(hr) == ERROR_SHUTDOWN_IS_SCHEDULED &&
          clock() < timeout) {
     ::Sleep(500);
@@ -872,7 +887,7 @@ bool BrowserFactory::CreateLowIntegrityLevelToken(HANDLE* process_token_handle,
     }
    }
 
-  if (result) {     
+  if (result) {
     result = ::ConvertStringSidToSid(SDDL_ML_LOW, sid);
     if (result) {
       tml.Label.Attributes = SE_GROUP_INTEGRITY;
@@ -916,13 +931,13 @@ void BrowserFactory::InvokeClearCacheUtility(bool use_low_integrity_level) {
   PSID    sid = NULL;
 
   bool can_create_process = true;
-  if (!use_low_integrity_level || 
+  if (!use_low_integrity_level ||
       this->CreateLowIntegrityLevelToken(&process_token, &mic_token, &sid)) {
     if (0 != system_path_size &&
         system_path_size <= static_cast<int>(system_path_buffer.size())) {
       if (::PathCombine(&rundll_exe_path_buffer[0],
                         &system_path_buffer[0],
-                        RUNDLL_EXE_NAME) && 
+                        RUNDLL_EXE_NAME) &&
           ::PathCombine(&inetcpl_path_buffer[0],
                         &system_path_buffer[0],
                         INTERNET_CONTROL_PANEL_APPLET_NAME)) {
@@ -1018,7 +1033,7 @@ BOOL CALLBACK BrowserFactory::FindBrowserWindow(HWND hwnd, LPARAM arg) {
       strcmp(SHELL_DOCOBJECT_VIEW_WINDOW_CLASS, name) != 0) {
     return TRUE;
   }
-
+  LOG(TRACE) << "--> Search Window " << name ;
   return EnumChildWindows(hwnd, FindChildWindowForProcess, arg);
 }
 
@@ -1033,7 +1048,7 @@ BOOL CALLBACK BrowserFactory::FindEdgeWindow(HWND hwnd, LPARAM arg) {
 
   // continue if it is not "Chrome_WidgetWin_1"
   if (strcmp(ANDIE_FRAME_WINDOW_CLASS, name) != 0) return TRUE;
-
+  LOG(TRACE) << "--> Search Edge Window " << name;
   return EnumChildWindows(hwnd, FindEdgeChildWindowForProcess, arg);
 }
 
@@ -1047,17 +1062,22 @@ BOOL CALLBACK BrowserFactory::FindChildWindowForProcess(HWND hwnd, LPARAM arg) {
     // No match found. Skip
     return TRUE;
   }
-
+  LOG(TRACE) << "--> Search Sub-Window " << name;
   if (strcmp(IE_SERVER_CHILD_WINDOW_CLASS, name) != 0) {
     return TRUE;
   } else {
     DWORD process_id = NULL;
     ::GetWindowThreadProcessId(hwnd, &process_id);
     LOG(DEBUG) << "Looking for " << process_window_info->dwProcessId;
-    if (process_window_info->dwProcessId == process_id) {
+    if (process_window_info->dwProcessId == process_id
+      || process_window_info->dwProcessId == -1  // in case of 'ATTACH_EXISTING_BROWSER=true', pid is set to -1, we want to attach to the first available IE process
+      ) {
       // Once we've found the first Internet Explorer_Server window
       // for the process we want, we can stop.
       process_window_info->hwndBrowser = hwnd;
+
+      // update dwProcessId in case we attached to an existing browser
+      process_window_info->dwProcessId = process_id;
       return FALSE;
     }
   }
@@ -1075,18 +1095,26 @@ BOOL CALLBACK BrowserFactory::FindEdgeChildWindowForProcess(HWND hwnd, LPARAM ar
     // No match found. Skip
     return TRUE;
   }
-
+  LOG(TRACE) << "--> Search Edge Sub-Window " << name;
   if (strcmp(IE_SERVER_CHILD_WINDOW_CLASS, name) != 0) {
     return TRUE;
   }
   else {
     DWORD process_id = NULL;
     ::GetWindowThreadProcessId(hwnd, &process_id);
-    LOG(DEBUG) << "Looking for " << process_window_info->dwProcessId;
-    // Once we've found the first Internet Explorer_Server window
-    // for the process we want, we can stop.
-    process_window_info->hwndBrowser = hwnd;
-    return FALSE;
+    LOG(DEBUG) << "Looking for " << process_window_info->dwProcessId << " found window ID: " << process_id;
+
+    if (process_window_info->dwProcessId == process_id
+      || process_window_info->dwProcessId == -1  // in case of 'ATTACH_EXISTING_BROWSER=true', pid is set to -1, we want to attach to the first available IE process
+      ) {
+      // Once we've found the first Internet Explorer_Server window
+      // for the process we want, we can stop.
+      process_window_info->hwndBrowser = hwnd;
+
+      // update dwProcessId in case we attached to an existing browser
+      process_window_info->dwProcessId = process_id;
+      return FALSE;
+    }
   }
 
   return TRUE;
@@ -1104,14 +1132,14 @@ BOOL CALLBACK BrowserFactory::FindDialogWindowForProcess(HWND hwnd, LPARAM arg) 
     // No match found. Skip
     return TRUE;
   }
-  
-  if (strcmp(ALERT_WINDOW_CLASS, name) != 0 && 
+
+  if (strcmp(ALERT_WINDOW_CLASS, name) != 0 &&
       strcmp(HTML_DIALOG_WINDOW_CLASS, name) != 0 &&
       strcmp(SECURITY_DIALOG_WINDOW_CLASS, name) != 0) {
     return TRUE;
   } else {
-    // If the window style has the WS_DISABLED bit set or the 
-    // WS_VISIBLE bit unset, it can't be handled via the UI, 
+    // If the window style has the WS_DISABLED bit set or the
+    // WS_VISIBLE bit unset, it can't be handled via the UI,
     // and must not be a visible dialog. Furthermore, if the
     // window style does not display a caption bar, it's not a
     // dialog displayed by the browser, but likely by an add-on
@@ -1145,7 +1173,7 @@ void BrowserFactory::GetExecutableLocation() {
                                           IE_CLSID_REGISTRY_KEY,
                                           L"",
                                           &class_id)) {
-    std::wstring location_key = L"SOFTWARE\\Classes\\CLSID\\" + 
+    std::wstring location_key = L"SOFTWARE\\Classes\\CLSID\\" +
                                 class_id +
                                 L"\\LocalServer32";
     std::wstring executable_location;
@@ -1190,7 +1218,7 @@ void BrowserFactory::GetIEVersion() {
   LOG(TRACE) << "Entering BrowserFactory::GetIEVersion";
 
   std::string ie_version = FileUtilities::GetFileVersion(this->ie_executable_location_);
-  
+
   if (ie_version.size() == 0) {
     // 64-bit Windows 8 has a bug where it does not return the executable location properly
     this->ie_major_version_ = -1;
@@ -1348,7 +1376,7 @@ bool BrowserFactory::IsWindowsVersionOrGreater(unsigned short major_version,
                             VER_MAJORVERSION | VER_MINORVERSION | VER_SERVICEPACKMAJOR,
                             dwlConditionMask) != FALSE;
 }
- 
+
 bool BrowserFactory::IsWindowsVistaOrGreater() {
   return IsWindowsVersionOrGreater(HIBYTE(_WIN32_WINNT_VISTA), LOBYTE(_WIN32_WINNT_VISTA), 0);
 }

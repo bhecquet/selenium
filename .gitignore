@@ -121,3 +121,8 @@ bazel-testlogs
 /.vscode/
 /.scannerwork/
 /.bazelrc.local
+/cpp/webdriver-server/server.cc.bak
+/cpp/iedriverserver/IEDriverServer.vcxproj.bak
+/cpp/iedriverserver/IEDriverServer.rc.bak
+/cpp/iedriver/IEDriver.vcxproj.bak
+/cpp/iedriver/IEDriver.rc.bak

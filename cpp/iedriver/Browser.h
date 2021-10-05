@@ -138,6 +138,7 @@ class Browser : public DocumentHost, public IDispEventSimpleImpl<1, Browser, &DI
   bool SetFullScreen(bool is_full_screen);
 
   void InitiateBrowserReattach(void);
+  void InitiateEdgeBrowserAttach(void);
   void ReattachBrowser(IWebBrowser2* browser);
 
   bool is_explicit_close_requested(void) const {
@@ -160,6 +161,7 @@ class Browser : public DocumentHost, public IDispEventSimpleImpl<1, Browser, &DI
   bool is_navigation_started_;
   bool is_explicit_close_requested_;
   bool is_edge_chromium_;
+  bool is_new_edge_window_requested_;
   std::vector<DWORD> known_process_ids_;
 };
 

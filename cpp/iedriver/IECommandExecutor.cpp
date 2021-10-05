@@ -52,6 +52,7 @@
 #define DEFAULT_PAGE_LOAD_TIMEOUT_IN_MILLISECONDS 300000
 #define DEFAULT_FILE_UPLOAD_DIALOG_TIMEOUT_IN_MILLISECONDS 3000
 #define DEFAULT_BROWSER_REATTACH_TIMEOUT_IN_MILLISECONDS 10000
+#define DEFAULT_EDGE_BROWSER_ATTACH_TIMEOUT_IN_MILLISECONDS 30000
 
 namespace webdriver {
 
@@ -397,6 +398,18 @@ LRESULT IECommandExecutor::OnBrowserQuit(UINT uMsg,
   } else {
     LOG(WARN) << "Unable to find browser to quit with ID " << browser_id;
   }
+  return 0;
+}
+
+LRESULT IECommandExecutor::OnBeforeEdgeAttach(UINT uMsg,
+  WPARAM wParam,
+  LPARAM lParam,
+  BOOL& bHandled) {
+  LOG(TRACE) << "Entering IECommandExecutor::OnBeforeEdgeAttach";
+  if (this->factory_->ignore_protected_mode_settings()) {
+    this->reattach_wait_timeout_ = clock() + (static_cast<int>(DEFAULT_EDGE_BROWSER_ATTACH_TIMEOUT_IN_MILLISECONDS) / 1000 * CLOCKS_PER_SEC);
+  }
+  this->is_awaiting_new_window_ = true;
   return 0;
 }
 
@@ -1177,6 +1190,98 @@ std::string IECommandExecutor::OpenNewBrowsingContext(const std::string& window_
   return this->OpenNewBrowsingContext(window_type, "about:blank");
 }
 
+void IECommandExecutor::PostBrowserEdgeAttachMessage(const DWORD current_process_id,
+  const std::string& browser_id,
+  const std::vector<DWORD>& known_process_ids) {
+  LOG(TRACE) << "Entering IECommandExecutor::PostBrowserEdgeAttachMessage";
+
+  ::Sleep(100);
+  BrowserReattachInfo* repost_info = new BrowserReattachInfo;
+  repost_info->current_process_id = current_process_id;
+  repost_info->browser_id = browser_id;
+  repost_info->known_process_ids = known_process_ids;
+  ::PostMessage(this->m_hWnd,
+                WD_PREPARE_ATTACH,
+                NULL,
+                reinterpret_cast<LPARAM>(repost_info));
+}
+
+LRESULT IECommandExecutor::OnPrepareEdgeAttach(UINT uMsg,
+  WPARAM wParam,
+  LPARAM lParam,
+  BOOL& bHandled) {
+
+  // copied from IECommandExecutor::OnBrowserReattach
+  LOG(TRACE) << "Entering IECommandExecutor::OnPrepareEdgeAttach";
+  BrowserReattachInfo* info = reinterpret_cast<BrowserReattachInfo*>(lParam);
+  DWORD current_process_id = info->current_process_id;
+  std::string browser_id = info->browser_id;
+  std::vector<DWORD> known_process_ids = info->known_process_ids;
+  delete info;
+
+  if (!this->factory_->ignore_protected_mode_settings()) {
+    return 0;
+  }
+
+  if (this->reattach_wait_timeout_ < clock()) {
+    LOG(WARN) << "Reattach attempt has timed out";
+    return 0;
+  }
+
+  LOG(DEBUG) << "Starting browser reattach process";
+  LOG(DEBUG) << "Known processes: " << known_process_ids.size();
+  std::vector<DWORD> new_process_ids;
+  this->GetNewBrowserProcessIds(&known_process_ids, &new_process_ids);
+  if (new_process_ids.size() == 0) {
+    LOG(DEBUG) << "No new process found, rescheduling reattach";
+    // If no new process IDs were found yet, repost the message
+    this->PostBrowserEdgeAttachMessage(current_process_id,
+                                      browser_id,
+                                      known_process_ids);
+    return 0;
+  }
+  if (new_process_ids.size() > 1) {
+    LOG(WARN) << "Found more than one new iexplore.exe process. It is "
+      << "impossible to know which is the proper one. Choosing one "
+      << "at random.";
+  }
+
+  DWORD new_process_id = new_process_ids[0];
+  if (!this->factory_->IsBrowserProcessInitialized(new_process_id)) {
+    // If the browser for the new process ID is not yet ready,
+    // repost the message
+    LOG(DEBUG) << "Browser process " << new_process_id
+      << " not initialized, rescheduling reattach";
+    this->PostBrowserEdgeAttachMessage(current_process_id,
+                                        browser_id,
+                                        known_process_ids);
+    return 0;
+  }
+
+  std::string error_message = "";
+  ProcessWindowInfo process_window_info;
+  process_window_info.dwProcessId = new_process_id;
+  process_window_info.hwndBrowser = NULL;
+  process_window_info.pBrowser = NULL;
+  bool attached = this->factory_->AttachToBrowser(&process_window_info, &error_message);
+
+  this->proxy_manager_->SetProxySettings(process_window_info.hwndBrowser);
+  BrowserHandle wrapper(new Browser(process_window_info.pBrowser,
+                                  process_window_info.hwndBrowser,
+                                  this->m_hWnd,
+                                  this->is_edge_chromium_));
+
+  this->AddManagedBrowser(wrapper);
+  bool is_busy = wrapper->IsBusy();
+  if (is_busy) {
+    LOG(WARN) << "Browser was launched and attached to, but is still busy.";
+  }
+  wrapper->SetFocusToBrowser();
+  this->is_awaiting_new_window_ = false;
+
+  return WD_SUCCESS;
+}
+
 std::string IECommandExecutor::OpenNewBrowsingContext(const std::string& window_type,
                                                       const std::string& url) {
   LOG(TRACE) << "Entering IECommandExecutor::OpenNewBrowsingContext";
@@ -1341,15 +1446,27 @@ BOOL CALLBACK IECommandExecutor::FindAllBrowserHandles(HWND hwnd, LPARAM arg) {
   return TRUE;
 }
 
-int IECommandExecutor::CreateNewBrowser(std::string* error_message) {
+int IECommandExecutor::CreateNewBrowser(std::string* error_message, bool attach_existing_browser) {
   LOG(TRACE) << "Entering IECommandExecutor::CreateNewBrowser";
-
-  DWORD process_id = this->factory_->LaunchBrowserProcess(error_message);
-  if (process_id == NULL) {
-    LOG(WARN) << "Unable to launch browser, received NULL process ID";
-    this->is_waiting_ = false;
-    return ENOSUCHDRIVER;
+  DWORD process_id;
+  if (!attach_existing_browser) {
+    process_id = this->factory_->LaunchBrowserProcess(error_message);
+    if (process_id == NULL) {
+      LOG(WARN) << "Unable to launch browser, received NULL process ID";
+      this->is_waiting_ = false;
+      return ENOSUCHDRIVER;
+    }
   }
+  else {
+    process_id = -1;
+  }
+
+  // is case of Edge (in IE mode), we do not provide the processId when searching IE windows as it prevent from finding it
+  // This processId will be restored in BrowserFactory::FindEdgeWindow method
+  if (this->is_edge_chromium_) {
+    process_id = -1;
+  }
+  
 
   ProcessWindowInfo process_window_info;
   process_window_info.dwProcessId = process_id;
