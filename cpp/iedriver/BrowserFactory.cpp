@@ -42,6 +42,7 @@
 #define SHELL_DOCOBJECT_VIEW_WINDOW_CLASS "Shell DocObject View"
 #define IE_SERVER_CHILD_WINDOW_CLASS "Internet Explorer_Server"
 #define ANDIE_FRAME_WINDOW_CLASS "Chrome_WidgetWin_1"
+#define IEXPLORE_PROCESS "iexplore.exe"
 
 #define IE_CLSID_REGISTRY_KEY L"SOFTWARE\\Classes\\InternetExplorer.Application\\CLSID"
 #define IE_SECURITY_ZONES_REGISTRY_KEY L"Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones"
@@ -444,7 +445,19 @@ bool BrowserFactory::AttachToBrowser(ProcessWindowInfo* process_window_info,
     }
   }
 
-  if (!attached) {
+  // Shell windows does not work properly for Edge in IE mode so retry using accessibility
+  if (!attached && this->IsEdgeMode()) {
+    LOG(DEBUG) << "Retry Using Active Accessibility to find IWebBrowser2 interface";
+    attached = this->AttachToBrowserUsingActiveAccessibility(process_window_info,
+      error_message);
+    if (!attached) {
+      LOG(DEBUG) << "Failed an other time to find IWebBrowser2 using ActiveAccessibility: "
+        << *error_message;
+      // Reset the browser window handle to NULL, since we didn't attach
+      // using Active Accessibility.
+      process_window_info->hwndBrowser = NULL;
+    }
+  } else if (!attached) {
     LOG(DEBUG) << "Using IShellWindows to find IWebBrowser2 interface";
     attached = this->AttachToBrowserUsingShellWindows(process_window_info,
                                                       error_message);
@@ -1102,7 +1115,7 @@ BOOL CALLBACK BrowserFactory::FindEdgeChildWindowForProcess(HWND hwnd, LPARAM ar
   else {
     DWORD process_id = NULL;
     ::GetWindowThreadProcessId(hwnd, &process_id);
-    LOG(DEBUG) << "Looking for " << process_window_info->dwProcessId << " found window ID: " << process_id;
+    LOG(DEBUG) << "Looking for " << process_window_info->dwProcessId << " found process ID: " << process_id;
 
     if (process_window_info->dwProcessId == process_id
       || process_window_info->dwProcessId == -1  // in case of 'ATTACH_EXISTING_BROWSER=true', pid is set to -1, we want to attach to the first available IE process
