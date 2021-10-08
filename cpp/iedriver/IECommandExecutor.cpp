@@ -558,7 +558,13 @@ LRESULT IECommandExecutor::OnGetQuitStatus(UINT uMsg,
                                            WPARAM wParam,
                                            LPARAM lParam,
                                            BOOL& bHandled) {
-  return this->is_quitting_ && this->managed_browsers_.size() > 0 ? 1 : 0;
+  // if not Internet Explorer process is there (when the application closes by itself, clicking on a button for example)
+  // processes have vanished but driver thinks browser is still there
+  std::vector<DWORD> process_ids;
+  WindowUtilities::GetProcessesByName(L"iexplore.exe", &process_ids);
+
+  LOG(TRACE) << "Remaining processes " << process_ids.size();
+  return this->is_quitting_ && process_ids.size() > 0 && this->managed_browsers_.size() > 0 ? 1 : 0;
 }
 
 LRESULT IECommandExecutor::OnScriptWait(UINT uMsg,
