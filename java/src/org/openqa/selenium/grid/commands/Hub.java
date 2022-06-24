@@ -153,17 +153,26 @@ public class Hub extends TemplateGridServerCommand {
       secret);
     handler.addHandler(queue);
 
-    Distributor distributor = new LocalDistributor(
-      tracer,
-      bus,
-      clientFactory,
-      sessions,
-      queue,
-      distributorOptions.getSlotSelector(),
-      secret,
-      distributorOptions.getHealthCheckInterval(),
-      distributorOptions.shouldRejectUnsupportedCaps(),
-      newSessionRequestOptions.getSessionRequestRetryInterval());
+    Distributor distributor;
+    // in case distributor implementation is defined, use it
+    // distributorOptions.getDistributor() also create a default LocalDistributor, but it assumes remote sessions
+    // which is not what we expect for a Hub
+    if (config.get(DistributorOptions.DISTRIBUTOR_SECTION, "implementation") != null) {
+      distributor = distributorOptions.getDistributor();
+    } else {
+      distributor = new LocalDistributor(
+        tracer,
+        bus,
+        clientFactory,
+        sessions,
+        queue,
+        distributorOptions.getSlotSelector(),
+        secret,
+        distributorOptions.getHealthCheckInterval(),
+        distributorOptions.shouldRejectUnsupportedCaps(),
+        newSessionRequestOptions.getSessionRequestRetryInterval());
+    }
+
     handler.addHandler(distributor);
 
     Router router = new Router(tracer, clientFactory, sessions, queue, distributor);
