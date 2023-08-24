@@ -115,7 +115,7 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
     this->current_browser_id_ = browser_id;
   }
 
-  int CreateNewBrowser(std::string* error_message);
+  int CreateNewBrowser(std::string* error_message, bool attach_existing_browser);
   std::string OpenNewBrowsingContext(const std::string& window_type);
 
   int GetManagedBrowser(const std::string& browser_id,
@@ -221,6 +221,13 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
     this->use_strict_file_interactability_ = use_strict_file_interactability;
   }
 
+  bool attach_existing_browser(void) const {
+    return this->attach_existing_browser_;
+  }
+  void set_attach_existing_browser(const bool use_strict_file_interactability) {
+    this->attach_existing_browser_ = use_strict_file_interactability;
+  }
+
   ElementFinder* element_finder(void) const { return this->element_finder_; }
   InputManager* input_manager(void) const { return this->input_manager_; }
   ProxyManager* proxy_manager(void) const { return this->proxy_manager_; }
@@ -292,6 +299,7 @@ class IECommandExecutor : public CWindowImpl<IECommandExecutor>, public IElement
   bool use_legacy_file_upload_dialog_handling_;
   bool enable_full_page_screenshot_;
   bool use_strict_file_interactability_;
+  bool attach_existing_browser_;
   bool is_edge_chromium_;
   std::string edge_executable_path_;
   std::wstring edge_temp_dir_;

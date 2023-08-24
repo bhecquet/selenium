@@ -1557,14 +1557,20 @@ std::string IECommandExecutor::OpenNewBrowserTab(const std::wstring& url) {
   return new_tab_wrapper->browser_id();
 }
 
-int IECommandExecutor::CreateNewBrowser(std::string* error_message) {
+int IECommandExecutor::CreateNewBrowser(std::string* error_message, bool attach_existing_browser) {
   LOG(TRACE) << "Entering IECommandExecutor::CreateNewBrowser";
 
-  DWORD process_id = this->factory_->LaunchBrowserProcess(error_message);
-  if (process_id == NULL) {
-    LOG(WARN) << "Unable to launch browser, received NULL process ID";
-    this->is_waiting_ = false;
-    return ENOSUCHDRIVER;
+  DWORD process_id;
+  if (!attach_existing_browser) {
+    process_id = this->factory_->LaunchBrowserProcess(error_message);
+    if (process_id == NULL) {
+      LOG(WARN) << "Unable to launch browser, received NULL process ID";
+      this->is_waiting_ = false;
+      return ENOSUCHDRIVER;
+    }
+  }
+  else {
+    process_id = -1;
   }
 
   ProcessWindowInfo process_window_info;
