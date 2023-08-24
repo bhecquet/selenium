@@ -17,26 +17,24 @@
 
 package org.openqa.selenium.grid.config;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.beust.jcommander.Parameter;
-
-import org.junit.Test;
-
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-public class AnnotatedConfigTest {
+class AnnotatedConfigTest {
 
   @Test
-  public void shouldAllowConfigsToBeAnnotated() {
+  void shouldAllowConfigsToBeAnnotated() {
 
     class WithAnnotations {
 
@@ -47,15 +45,15 @@ public class AnnotatedConfigTest {
     WithAnnotations obj = new WithAnnotations();
     Config config = new AnnotatedConfig(obj);
     assertEquals(Optional.of("brie"), config.get("cheese", "type"));
-
   }
 
   @Test
-  public void shouldAllowFieldsToBeSomethingOtherThanStrings() {
+  void shouldAllowFieldsToBeSomethingOtherThanStrings() {
     class WithTypes {
 
       @ConfigValue(section = "types", name = "bool", example = "false")
       private final boolean boolField = true;
+
       @ConfigValue(section = "types", name = "int", example = "0")
       private final int intField = 42;
     }
@@ -66,7 +64,7 @@ public class AnnotatedConfigTest {
   }
 
   @Test
-  public void shouldAllowCollectionTypeFieldsToBeAnnotated() {
+  void shouldAllowCollectionTypeFieldsToBeAnnotated() {
     class WithBadAnnotation {
 
       @ConfigValue(section = "the", name = "collection", example = "[]")
@@ -74,36 +72,40 @@ public class AnnotatedConfigTest {
     }
 
     AnnotatedConfig config = new AnnotatedConfig(new WithBadAnnotation());
-    List<String> values = config.getAll("the", "collection")
-      .orElseThrow(() -> new AssertionError("No value returned"));
+    List<String> values =
+        config
+            .getAll("the", "collection")
+            .orElseThrow(() -> new AssertionError("No value returned"));
 
     assertEquals(2, values.size());
     assertTrue(values.contains("cheddar"));
     assertTrue(values.contains("gouda"));
   }
 
-  @Test(expected = ConfigException.class)
-  public void shouldNotAllowMapTypeFieldsToBeAnnotated() {
-    class WithBadAnnotation {
+  @Test
+  void shouldNotAllowMapTypeFieldsToBeAnnotated() {
+    assertThrows(
+        ConfigException.class,
+        () -> {
+          class WithBadAnnotation {
 
-      @ConfigValue(section = "bad", name = "map", example = "")
-      private final Map<String, String> cheeses = ImmutableMap.of("peas", "sausage");
-    }
+            @ConfigValue(section = "bad", name = "map", example = "")
+            private final Map<String, String> cheeses = ImmutableMap.of("peas", "sausage");
+          }
 
-    new AnnotatedConfig(new WithBadAnnotation());
+          new AnnotatedConfig(new WithBadAnnotation());
+        });
   }
 
   @Test
-  public void shouldWalkInheritanceHierarchy() {
+  void shouldWalkInheritanceHierarchy() {
     class Parent {
 
       @ConfigValue(section = "cheese", name = "type", example = "")
       private final String value = "cheddar";
     }
 
-    class Child extends Parent {
-
-    }
+    class Child extends Parent {}
 
     Config config = new AnnotatedConfig(new Child());
 
@@ -111,7 +113,7 @@ public class AnnotatedConfigTest {
   }
 
   @Test
-  public void configValuesFromChildClassesAreMoreImportant() {
+  void configValuesFromChildClassesAreMoreImportant() {
     class Parent {
 
       @ConfigValue(section = "cheese", name = "type", example = "\"gouda\"")
@@ -130,7 +132,7 @@ public class AnnotatedConfigTest {
   }
 
   @Test
-  public void defaultValuesForPrimitivesAreIgnored() {
+  void defaultValuesForPrimitivesAreIgnored() {
     // There's no way to tell the difference between the default values and the value having been
     // set to the default. Best not worry about it.
     class Defaults {
@@ -140,8 +142,10 @@ public class AnnotatedConfigTest {
       // instead.
       @ConfigValue(section = "default", name = "bool", example = "")
       private boolean bool;
+
       @ConfigValue(section = "default", name = "int", example = "")
       private int integer;
+
       @ConfigValue(section = "default", name = "string", example = "")
       private String string;
     }
@@ -156,24 +160,24 @@ public class AnnotatedConfigTest {
   }
 
   @Test
-  public void shouldUseSetToFilterFields() {
+  void shouldUseSetToFilterFields() {
     class TypesToBeFiltered {
 
       @Parameter(names = {"--bool"})
       @ConfigValue(section = "types", name = "boolean", example = "false")
       private final boolean boolField = true;
+
       @Parameter(names = {"--string"})
       @ConfigValue(section = "types", name = "string", example = "N/A")
       private final String stringField = "A String";
+
       @Parameter(names = {"--int"})
       @ConfigValue(section = "types", name = "integer", example = "0")
       private final int intField = 42;
     }
 
-    Config config = new AnnotatedConfig(
-      new TypesToBeFiltered(),
-      ImmutableSet.of("--string", "--bool"),
-      true);
+    Config config =
+        new AnnotatedConfig(new TypesToBeFiltered(), ImmutableSet.of("--string", "--bool"), true);
     assertEquals(Optional.of(true), config.getBool("types", "boolean"));
     assertEquals(Optional.of("A String"), config.get("types", "string"));
     assertEquals(Optional.empty(), config.getInt("types", "integer"));

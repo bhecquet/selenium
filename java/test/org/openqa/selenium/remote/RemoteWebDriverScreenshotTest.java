@@ -22,16 +22,16 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.openqa.selenium.OutputType.BASE64;
 import static org.openqa.selenium.testing.drivers.Browser.HTMLUNIT;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.testing.Ignore;
-import org.openqa.selenium.testing.JUnit4TestBase;
+import org.openqa.selenium.testing.JupiterTestBase;
 
 @Ignore(HTMLUNIT)
-public class RemoteWebDriverScreenshotTest extends JUnit4TestBase {
+class RemoteWebDriverScreenshotTest extends JupiterTestBase {
 
   @Test
   @Ignore
@@ -45,29 +45,24 @@ public class RemoteWebDriverScreenshotTest extends JUnit4TestBase {
 
     assertThatExceptionOfType(NoSuchElementException.class)
         .isThrownBy(() -> driver.findElement(By.id("doesnayexist")))
-        .satisfies(e -> assertThat(
-            ((ScreenshotException) e.getCause()).getBase64EncodedScreenshot().length()).isGreaterThan(0));
+        .satisfies(
+            e ->
+                assertThat(
+                        ((ScreenshotException) e.getCause()).getBase64EncodedScreenshot().length())
+                    .isPositive());
   }
 
   @Test
-  public void testCanAugmentWebDriverInstanceIfNecessary() {
+  void testCanAugmentWebDriverInstanceIfNecessary() {
     if (!(driver instanceof RemoteWebDriver)) {
       System.out.println("Skipping test: driver is not a remote webdriver");
       return;
-    }
-
-    RemoteWebDriver remote = (RemoteWebDriver) driver;
-    Boolean screenshots = (Boolean) remote.getCapabilities()
-        .getCapability(CapabilityType.TAKES_SCREENSHOT);
-    if (screenshots == null || !screenshots) {
-      System.out.println("Skipping test: remote driver cannot take screenshots");
     }
 
     driver.get(pages.formPage);
     WebDriver toUse = new Augmenter().augment(driver);
     String screenshot = ((TakesScreenshot) toUse).getScreenshotAs(BASE64);
 
-    assertThat(screenshot.length()).isGreaterThan(0);
+    assertThat(screenshot.length()).isPositive();
   }
-
 }

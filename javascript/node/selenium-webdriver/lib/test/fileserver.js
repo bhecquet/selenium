@@ -37,7 +37,7 @@ const dataDirectory = path.join(__dirname, 'data')
 const jsDirectory = resources.locate('javascript')
 
 const Pages = (function () {
-  var pages = {}
+  let pages = {}
   function addPage(page, path) {
     pages.__defineGetter__(page, function () {
       return exports.whereIs(path)
@@ -47,6 +47,7 @@ const Pages = (function () {
   addPage('ajaxyPage', 'ajaxy_page.html')
   addPage('alertsPage', 'alerts.html')
   addPage('basicAuth', 'basicAuth')
+  addPage('blankPage', 'blank.html')
   addPage('bodyTypingPage', 'bodyTypingTest.html')
   addPage('booleanAttributes', 'booleanAttributes.html')
   addPage('childPage', 'child/childPage.html')
@@ -106,6 +107,13 @@ const Pages = (function () {
   addPage('webComponents', 'webComponents.html')
   addPage('xhtmlTestPage', 'xhtmlTest.html')
   addPage('uploadInvisibleTestPage', 'upload_invisible.html')
+  addPage('virtualAuthenticator', 'virtual-authenticator.html')
+  addPage('logEntryAdded', 'bidi/logEntryAdded.html')
+  addPage('scriptTestAccessProperty', 'bidi/scriptTestAccessProperty.html')
+  addPage('scriptTestRemoveProperty', 'bidi/scriptTestRemoveProperty.html')
+  addPage('emptyPage', 'bidi/emptyPage.html')
+  addPage('emptyText', 'bidi/emptyText.txt')
+  addPage('redirectedHttpEquiv', 'bidi/redirected_http_equiv.html')
 
   return pages
 })()
@@ -240,9 +248,24 @@ function handleUpload(request, response) {
       response.writeHead(500)
       response.end(err + '')
     } else {
-      response.writeHead(200)
-      response.write(request.files[0].buffer)
-      response.end('<script>window.top.window.onUploadDone();</script>')
+      if (!request.files) {
+        return response.status(400).send('No files were uploaded')
+      }
+
+      let files = []
+      let keys = Object.keys(request.files)
+
+      keys.forEach((file) => {
+        files.push(request.files[file].originalname)
+      })
+
+      response
+        .status(200)
+        .contentType('html')
+        .send(
+          files.join('\n') +
+          '\n<script>window.top.window.onUploadDone();</script>'
+        )
     }
   })
 }

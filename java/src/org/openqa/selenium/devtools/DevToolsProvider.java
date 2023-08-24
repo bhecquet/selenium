@@ -18,14 +18,15 @@
 package org.openqa.selenium.devtools;
 
 import com.google.auto.service.AutoService;
+import java.net.URI;
+import java.util.Optional;
+import java.util.function.Predicate;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.devtools.noop.NoOpCdpInfo;
 import org.openqa.selenium.remote.AugmenterProvider;
 import org.openqa.selenium.remote.ExecuteMethod;
 
-import java.util.Optional;
-import java.util.function.Predicate;
-
+@SuppressWarnings({"rawtypes", "RedundantSuppression"})
 @AutoService(AugmenterProvider.class)
 public class DevToolsProvider implements AugmenterProvider<HasDevTools> {
 
@@ -45,17 +46,25 @@ public class DevToolsProvider implements AugmenterProvider<HasDevTools> {
     String version = cdpVersion instanceof String ? (String) cdpVersion : caps.getBrowserVersion();
 
     CdpInfo info = new CdpVersionFinder().match(version).orElseGet(NoOpCdpInfo::new);
-    Optional<DevTools> devTools = SeleniumCdpConnection.create(caps).map(conn -> new DevTools(info::getDomains, conn));
+    Optional<DevTools> devTools =
+        SeleniumCdpConnection.create(caps).map(conn -> new DevTools(info::getDomains, conn));
 
     return () -> devTools;
   }
 
   private String getCdpUrl(Capabilities caps) {
-    Object cdp = caps.getCapability("se:cdp");
-    if (!(cdp instanceof String)) {
+    Object cdpEnabled = caps.getCapability("se:cdpEnabled");
+    if (cdpEnabled != null && !Boolean.parseBoolean(cdpEnabled.toString())) {
       return null;
     }
 
-    return (String) cdp;
+    Object cdp = caps.getCapability("se:cdp");
+    if (cdp instanceof String) {
+      return (String) cdp;
+    }
+
+    Optional<URI> reportedUri = CdpEndpointFinder.getReportedUri(caps);
+
+    return reportedUri.map(URI::toString).orElse(null);
   }
 }

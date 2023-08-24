@@ -21,7 +21,6 @@ module Selenium
   module WebDriver
     module Support
       class Guards
-
         #
         # Guard derived from RSpec example metadata.
         # @api private
@@ -32,7 +31,7 @@ module Selenium
 
           def initialize(name, condition = nil, &blk)
             @name = name
-            @execution = if block_given?
+            @execution = if blk
                            proc(&blk)
                          else
                            proc { |guarded| guarded.include?(condition) }
@@ -44,7 +43,6 @@ module Selenium
 
             list.empty? || @execution.call(list)
           end
-
         end # GuardCondition
       end # Guards
     end # Support

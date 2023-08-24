@@ -17,16 +17,15 @@
 
 package org.openqa.selenium.grid.security;
 
-import org.openqa.selenium.internal.Require;
-import org.openqa.selenium.remote.http.Filter;
-import org.openqa.selenium.remote.http.HttpHandler;
-import org.openqa.selenium.remote.http.HttpResponse;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.net.HttpURLConnection;
 import java.util.Base64;
 import java.util.logging.Logger;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
+import org.openqa.selenium.internal.Require;
+import org.openqa.selenium.remote.http.Filter;
+import org.openqa.selenium.remote.http.HttpHandler;
+import org.openqa.selenium.remote.http.HttpResponse;
 
 public class BasicAuthenticationFilter implements Filter {
 
@@ -42,11 +41,14 @@ public class BasicAuthenticationFilter implements Filter {
     return req -> {
       Require.nonNull("Request", req);
 
-      if (!isAuthorized(req.getHeader("Authorization"))) {
-        LOG.info("Unauthorized request to " + req);
+      String auth = req.getHeader("Authorization");
+      if (!isAuthorized(auth)) {
+        if (auth != null) {
+          LOG.info("Unauthorized request to " + req);
+        }
         return new HttpResponse()
-          .setStatus(HttpURLConnection.HTTP_UNAUTHORIZED)
-          .addHeader("WWW-Authenticate", "Basic realm=\"selenium-server\"");
+            .setStatus(HttpURLConnection.HTTP_UNAUTHORIZED)
+            .addHeader("WWW-Authenticate", "Basic realm=\"selenium-server\"");
       }
 
       return next.execute(req);

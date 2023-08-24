@@ -23,6 +23,7 @@ module Selenium
       autoload :ConsoleEvent, 'selenium/webdriver/devtools/console_event'
       autoload :ExceptionEvent, 'selenium/webdriver/devtools/exception_event'
       autoload :MutationEvent, 'selenium/webdriver/devtools/mutation_event'
+      autoload :NetworkInterceptor, 'selenium/webdriver/devtools/network_interceptor'
       autoload :PinnedScript, 'selenium/webdriver/devtools/pinned_script'
       autoload :Request, 'selenium/webdriver/devtools/request'
       autoload :Response, 'selenium/webdriver/devtools/response'
@@ -42,7 +43,7 @@ module Selenium
       end
 
       def send_cmd(method, **params)
-        data = {method: method, params: params.reject { |_, v| v.nil? }}
+        data = {method: method, params: params.compact}
         data[:sessionId] = @session_id if @session_id
         message = @ws.send_cmd(**data)
         raise Error::WebDriverError, error_message(message['error']) if message['error']
@@ -51,7 +52,17 @@ module Selenium
       end
 
       def method_missing(method, *_args)
-        desired_class = "Selenium::DevTools::V#{Selenium::DevTools.version}::#{method.capitalize}"
+        namespace = "Selenium::DevTools::V#{Selenium::DevTools.version}"
+        methods_to_classes = "#{namespace}::METHODS_TO_CLASSES"
+
+        desired_class = if Object.const_defined?(methods_to_classes)
+                          # selenium-devtools 0.113 and newer
+                          "#{namespace}::#{Object.const_get(methods_to_classes)[method]}"
+                        else
+                          # selenium-devtools 0.112 and older
+                          "#{namespace}::#{method.capitalize}"
+                        end
+
         return unless Object.const_defined?(desired_class)
 
         self.class.class_eval do
@@ -80,7 +91,6 @@ module Selenium
       def error_message(error)
         [error['code'], error['message'], error['data']].join(': ')
       end
-
     end # DevTools
   end # WebDriver
 end # Selenium

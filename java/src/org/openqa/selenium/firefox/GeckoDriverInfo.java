@@ -17,20 +17,18 @@
 
 package org.openqa.selenium.firefox;
 
-import static org.openqa.selenium.firefox.FirefoxDriver.Capability.MARIONETTE;
 import static org.openqa.selenium.remote.Browser.FIREFOX;
 import static org.openqa.selenium.remote.CapabilityType.BROWSER_NAME;
 
 import com.google.auto.service.AutoService;
-
+import java.util.Optional;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.SessionNotCreatedException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebDriverInfo;
-
-import java.util.Optional;
+import org.openqa.selenium.remote.service.DriverFinder;
 
 @AutoService(WebDriverInfo.class)
 public class GeckoDriverInfo implements WebDriverInfo {
@@ -47,18 +45,11 @@ public class GeckoDriverInfo implements WebDriverInfo {
 
   @Override
   public boolean isSupporting(Capabilities capabilities) {
-    if (capabilities.is(MARIONETTE)) {
-      return false;
-    }
-
     if (FIREFOX.is(capabilities)) {
       return true;
     }
 
-    return capabilities.asMap().keySet().stream()
-      .map(key -> key.startsWith("moz:"))
-      .reduce(Boolean::logicalOr)
-      .orElse(false);
+    return capabilities.asMap().keySet().stream().anyMatch(key -> key.startsWith("moz:"));
   }
 
   @Override
@@ -67,9 +58,25 @@ public class GeckoDriverInfo implements WebDriverInfo {
   }
 
   @Override
+  public boolean isSupportingBiDi() {
+    return true;
+  }
+
+  @Override
   public boolean isAvailable() {
     try {
-      GeckoDriverService.createDefaultService();
+      DriverFinder.getPath(GeckoDriverService.createDefaultService(), getCanonicalCapabilities());
+      return true;
+    } catch (IllegalStateException | WebDriverException e) {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean isPresent() {
+    try {
+      DriverFinder.getPath(
+          GeckoDriverService.createDefaultService(), getCanonicalCapabilities(), true);
       return true;
     } catch (IllegalStateException | WebDriverException e) {
       return false;
@@ -88,10 +95,6 @@ public class GeckoDriverInfo implements WebDriverInfo {
       return Optional.empty();
     }
 
-    if (capabilities.is(MARIONETTE)) {
-      return Optional.empty();
-    }
-
-    return Optional.of(new FirefoxDriver(capabilities));
+    return Optional.of(new FirefoxDriver(new FirefoxOptions().merge(capabilities)));
   }
 }

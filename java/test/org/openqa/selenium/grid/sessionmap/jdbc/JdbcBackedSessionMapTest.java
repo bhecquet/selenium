@@ -17,9 +17,21 @@
 
 package org.openqa.selenium.grid.sessionmap.jdbc;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.Instant;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.NoSuchSessionException;
 import org.openqa.selenium.events.EventBus;
@@ -30,67 +42,72 @@ import org.openqa.selenium.remote.SessionId;
 import org.openqa.selenium.remote.tracing.DefaultTestTracer;
 import org.openqa.selenium.remote.tracing.Tracer;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.Instant;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-
-public class JdbcBackedSessionMapTest {
+class JdbcBackedSessionMapTest {
   private static Connection connection;
   private static EventBus bus;
   private static final Tracer tracer = DefaultTestTracer.createTracer();
 
-  @BeforeClass
+  @BeforeAll
   public static void createDB() throws SQLException {
     bus = new GuavaEventBus();
     connection = DriverManager.getConnection("jdbc:hsqldb:mem:testdb", "SA", "");
     Statement createStatement = connection.createStatement();
     createStatement.executeUpdate(
-      "create table sessions_map (session_ids varchar(50), session_uri varchar(30), session_stereotype varchar(300), session_caps varchar(300), session_start varchar(128));");
+        "create table sessions_map (session_ids varchar(50), session_uri varchar(30),"
+            + " session_stereotype varchar(300), session_caps varchar(300), session_start"
+            + " varchar(128));");
   }
 
-  @AfterClass
+  @AfterAll
   public static void killDBConnection() throws SQLException {
     connection.close();
+    bus.close();
   }
 
-  @Test(expected = NoSuchSessionException.class)
-  public void shouldThrowNoSuchSessionExceptionIfSessionDoesNotExists() {
-    SessionMap sessions = getSessionMap();
-
-    sessions.get(new SessionId(UUID.randomUUID()));
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void shouldThrowIllegalArgumentExceptionIfConnectionObjectIsNull() {
-    SessionMap sessions = new JdbcBackedSessionMap(tracer, null, bus);
-  }
-
-  @Test(expected = JdbcException.class)
-  public void shouldThrowNoSuchSessionExceptionIfTableDoesNotExist() throws SQLException {
-    Connection connection2 = DriverManager.getConnection("jdbc:hsqldb:mem:testdb2", "SA", "");
-
-    SessionMap sessions = new JdbcBackedSessionMap(tracer, connection2, bus);
-
-    sessions.get(new SessionId(UUID.randomUUID()));
-  }
   @Test
-  public void canCreateAJdbcBackedSessionMap() throws URISyntaxException {
+  void shouldThrowNoSuchSessionExceptionIfSessionDoesNotExists() {
+    assertThrows(
+        NoSuchSessionException.class,
+        () -> {
+          SessionMap sessions = getSessionMap();
+
+          sessions.get(new SessionId(UUID.randomUUID()));
+        });
+  }
+
+  @Test
+  void shouldThrowIllegalArgumentExceptionIfConnectionObjectIsNull() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          SessionMap sessions = new JdbcBackedSessionMap(tracer, null, bus);
+        });
+  }
+
+  @Test
+  void shouldThrowNoSuchSessionExceptionIfTableDoesNotExist() throws SQLException {
+    assertThrows(
+        JdbcException.class,
+        () -> {
+          Connection connection2 = DriverManager.getConnection("jdbc:hsqldb:mem:testdb2", "SA", "");
+
+          SessionMap sessions = new JdbcBackedSessionMap(tracer, connection2, bus);
+
+          sessions.get(new SessionId(UUID.randomUUID()));
+        });
+  }
+
+  @Test
+  void canCreateAJdbcBackedSessionMap() throws URISyntaxException {
     SessionMap sessions = getSessionMap();
 
-    Session expected = new Session(
-      new SessionId(UUID.randomUUID()),
-      new URI("http://example.com/foo"),
-      new ImmutableCapabilities("foo", "bar"),
-      new ImmutableCapabilities("key", "value"),
-      Instant.now());
+    Session expected =
+        new Session(
+            new SessionId(UUID.randomUUID()),
+            new URI("http://example.com/foo"),
+            new ImmutableCapabilities("foo", "bar"),
+            new ImmutableCapabilities("key", "value"),
+            Instant.now());
     sessions.add(expected);
 
     SessionMap reader = getSessionMap();
@@ -101,15 +118,16 @@ public class JdbcBackedSessionMapTest {
   }
 
   @Test
-  public void shouldBeAbleToRemoveSessions() throws URISyntaxException {
+  void shouldBeAbleToRemoveSessions() throws URISyntaxException {
     SessionMap sessions = getSessionMap();
 
-    Session expected = new Session(
-      new SessionId(UUID.randomUUID()),
-      new URI("http://example.com/foo"),
-      new ImmutableCapabilities("foo", "bar"),
-      new ImmutableCapabilities("key", "value"),
-      Instant.now());
+    Session expected =
+        new Session(
+            new SessionId(UUID.randomUUID()),
+            new URI("http://example.com/foo"),
+            new ImmutableCapabilities("foo", "bar"),
+            new ImmutableCapabilities("key", "value"),
+            Instant.now());
     sessions.add(expected);
 
     SessionMap reader = getSessionMap();
@@ -127,5 +145,4 @@ public class JdbcBackedSessionMapTest {
   private JdbcBackedSessionMap getSessionMap() {
     return new JdbcBackedSessionMap(tracer, connection, bus);
   }
-
 }

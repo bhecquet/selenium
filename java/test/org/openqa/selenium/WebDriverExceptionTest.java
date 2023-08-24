@@ -18,17 +18,14 @@ package org.openqa.selenium;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.openqa.selenium.testing.UnitTests;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
-/**
- * Small test for name extraction
- */
-@Category(UnitTests.class)
-public class WebDriverExceptionTest {
+/** Small test for name extraction */
+@Tag("UnitTests")
+class WebDriverExceptionTest {
   @Test
-  public void testExtractsADriverName() {
+  void testExtractsADriverName() {
     StackTraceElement[] stackTrace = new StackTraceElement[2];
     stackTrace[0] = new StackTraceElement("SomeClass", "someMethod", "SomeClass.java", 5);
     stackTrace[1] = new StackTraceElement("TestDriver", "someMethod", "TestDriver.java", 5);
@@ -39,7 +36,7 @@ public class WebDriverExceptionTest {
   }
 
   @Test
-  public void testExtractsMostSpecificDriverName() {
+  void testExtractsMostSpecificDriverName() {
     StackTraceElement[] stackTrace = new StackTraceElement[3];
     stackTrace[0] = new StackTraceElement("SomeClass", "someMethod", "SomeClass.java", 5);
     stackTrace[1] =
@@ -52,7 +49,7 @@ public class WebDriverExceptionTest {
   }
 
   @Test
-  public void testDefaultsToUnknownDriverName() {
+  void testDefaultsToUnknownDriverName() {
     StackTraceElement[] stackTrace = new StackTraceElement[2];
     stackTrace[0] = new StackTraceElement("SomeClass", "someMethod", "SomeClass.java", 5);
     stackTrace[1] = new StackTraceElement("SomeOtherClass", "someMethod", "SomeOtherClass.java", 5);
@@ -63,14 +60,14 @@ public class WebDriverExceptionTest {
   }
 
   @Test
-  public void shouldBeAbleToGetMessageWithoutAdditionalInfo() {
+  void shouldBeAbleToGetMessageWithoutAdditionalInfo() {
     String message = "Oops!";
     WebDriverException ex = new WebDriverException(message);
     assertThat(ex.getRawMessage()).isEqualTo(message);
   }
 
   @Test
-  public void shouldContainMessageAndAdditionalInfo() {
+  void shouldContainMessageAndAdditionalInfo() {
     String message = "Oops!";
     WebDriverException ex = new WebDriverException(message);
     assertThat(ex.getMessage())
@@ -78,7 +75,7 @@ public class WebDriverExceptionTest {
   }
 
   @Test
-  public void shouldInheritMessageFromParentException() {
+  void shouldInheritMessageFromParentException() {
     String message = "Oops!";
     WebDriverException parent = new WebDriverException(message);
     WebDriverException ex = new WebDriverException(parent);
@@ -86,18 +83,16 @@ public class WebDriverExceptionTest {
   }
 
   @Test
-  public void shouldNotInheritMessageFromParentExceptionIfHasItsOwnOne() {
+  void shouldNotInheritMessageFromParentExceptionIfHasItsOwnOne() {
     String parentMessage = "Oops!";
     String myMessage = "My message";
     WebDriverException parent = new WebDriverException(parentMessage);
     WebDriverException ex = new WebDriverException(myMessage, parent);
-    assertThat(ex.getMessage())
-        .contains(myMessage)
-        .doesNotContain(parentMessage);
+    assertThat(ex.getMessage()).contains(myMessage).doesNotContain(parentMessage);
   }
 
   @Test
-  public void canContainAdditionalInformation() {
+  void canContainAdditionalInformation() {
     WebDriverException ex = new WebDriverException();
     ex.addInfo("date", "today");
     ex.addInfo("time", "time unknown");
@@ -105,5 +100,4 @@ public class WebDriverExceptionTest {
         .contains("date: today", "time unknown")
         .doesNotContain("time: time unknown");
   }
-
 }

@@ -24,11 +24,13 @@ Gem::Specification.new do |s|
   s.homepage = 'https://selenium.dev'
   s.metadata = {
     'changelog_uri' => 'https://github.com/SeleniumHQ/selenium/blob/trunk/rb/CHANGES',
-    'source_code_uri' => 'https://github.com/SeleniumHQ/selenium/tree/trunk/rb'
+    'github_repo' => 'ssh://github.com/SeleniumHQ/selenium',
+    'source_code_uri' => 'https://github.com/SeleniumHQ/selenium/tree/trunk/rb',
+    'rubygems_mfa_required' => 'true'
   }
 
   s.required_rubygems_version = Gem::Requirement.new('> 1.3.1') if s.respond_to? :required_rubygems_version=
-  s.required_ruby_version = Gem::Requirement.new('>= 2.6')
+  s.required_ruby_version = Gem::Requirement.new('>= 3.0')
 
   s.files = [
     'CHANGES',
@@ -40,23 +42,23 @@ Gem::Specification.new do |s|
     'lib/selenium-webdriver.rb',
     'lib/selenium/server.rb',
     'lib/selenium/webdriver.rb'
-  ] + Dir['lib/selenium/webdriver/**/*']
+  ]
+  s.files += Dir['bin/**/*']
+  s.files += Dir['lib/selenium/webdriver/**/*']
 
+  s.bindir = 'bin'
   s.require_paths = ['lib']
 
-  s.add_runtime_dependency 'childprocess', ['>= 0.5', '< 5.0']
   s.add_runtime_dependency 'rexml', ['~> 3.2', '>= 3.2.5']
-  s.add_runtime_dependency 'rubyzip', ['>= 1.2.2']
+  s.add_runtime_dependency 'rubyzip', ['>= 1.2.2', '< 3.0']
+  s.add_runtime_dependency 'websocket', ['~> 1.0']
 
-  # childprocess requires ffi on windows but doesn't declare it in its dependencies
-  s.add_development_dependency 'ffi'
-  s.add_development_dependency 'pry', ['~> 0.14']
   s.add_development_dependency 'rack', ['~> 2.0']
-  s.add_development_dependency 'rake'
+  s.add_development_dependency 'rake', ['~> 13.0']
   s.add_development_dependency 'rspec', ['~> 3.0']
-  s.add_development_dependency 'rubocop', ['~> 1.8.0']
-  s.add_development_dependency 'rubocop-performance'
-  s.add_development_dependency 'rubocop-rspec'
+  s.add_development_dependency 'rubocop', ['~> 1.42']
+  s.add_development_dependency 'rubocop-performance', ['~> 1.15']
+  s.add_development_dependency 'rubocop-rspec', ['~> 2.16']
   s.add_development_dependency 'webmock', ['~> 3.5']
   s.add_development_dependency 'webrick', ['~> 1.7']
   s.add_development_dependency 'yard', ['~> 0.9.11']

@@ -17,6 +17,13 @@
 
 package org.openqa.selenium.remote.internal;
 
+import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
+import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assumptions.assumeThat;
+import static org.openqa.selenium.remote.http.HttpMethod.GET;
+
 import com.google.common.net.MediaType;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -45,30 +52,23 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpServerKeepAliveHandler;
 import io.netty.handler.codec.http.HttpVersion;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.openqa.selenium.remote.http.ClientConfig;
-import org.openqa.selenium.remote.http.Contents;
-import org.openqa.selenium.remote.http.HttpClient;
-import org.openqa.selenium.remote.http.HttpRequest;
-import org.openqa.selenium.remote.http.HttpResponse;
-import org.openqa.selenium.testing.Safely;
-
 import java.io.IOException;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
-import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assumptions.assumeThat;
-import static org.openqa.selenium.remote.http.HttpMethod.GET;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.remote.http.ClientConfig;
+import org.openqa.selenium.remote.http.Contents;
+import org.openqa.selenium.remote.http.HttpClient;
+import org.openqa.selenium.remote.http.HttpRequest;
+import org.openqa.selenium.remote.http.HttpResponse;
+import org.openqa.selenium.testing.Safely;
 
 public abstract class DomainSocketsTestBase {
 
@@ -79,7 +79,7 @@ public abstract class DomainSocketsTestBase {
 
   protected abstract HttpClient.Factory createFactory();
 
-  @Before
+  @BeforeEach
   public void setupUnixDomainSocketServer() throws IOException, URISyntaxException {
     Class<? extends ServerDomainSocketChannel> channelType = null;
 
@@ -94,50 +94,57 @@ public abstract class DomainSocketsTestBase {
     assumeThat(group).isNotNull();
     assumeThat(channelType).isNotNull();
 
-    ServerBootstrap bootstrap = new ServerBootstrap()
-      .group(group)
-      .option(ChannelOption.SO_BACKLOG, 1024)
-      .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-      .channel(channelType)
-      .childHandler(new ChannelInitializer<DomainSocketChannel>() {
-        @Override
-        protected void initChannel(DomainSocketChannel ch) {
-          ch.pipeline()
-            .addLast("http-codec", new HttpServerCodec())
-            .addLast("http-keep-alive", new HttpServerKeepAliveHandler())
-            .addLast("http-aggregator", new HttpObjectAggregator(Integer.MAX_VALUE))
-            .addLast(new SimpleChannelInboundHandler<FullHttpRequest>() {
-              @Override
-              protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) {
-                byte[] bytes = responseText.get().getBytes(UTF_8);
-                ByteBuf text = Unpooled.wrappedBuffer(bytes);
-                FullHttpResponse res = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, text);
-                res.headers().set(CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.toString());
-                res.headers().set(CONTENT_LENGTH, bytes.length);
+    ServerBootstrap bootstrap =
+        new ServerBootstrap()
+            .group(group)
+            .option(ChannelOption.SO_BACKLOG, 1024)
+            .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+            .channel(channelType)
+            .childHandler(
+                new ChannelInitializer<DomainSocketChannel>() {
+                  @Override
+                  protected void initChannel(DomainSocketChannel ch) {
+                    ch.pipeline()
+                        .addLast("http-codec", new HttpServerCodec())
+                        .addLast("http-keep-alive", new HttpServerKeepAliveHandler())
+                        .addLast("http-aggregator", new HttpObjectAggregator(Integer.MAX_VALUE))
+                        .addLast(
+                            new SimpleChannelInboundHandler<FullHttpRequest>() {
+                              @Override
+                              protected void channelRead0(
+                                  ChannelHandlerContext ctx, FullHttpRequest req) {
+                                byte[] bytes = responseText.get().getBytes(UTF_8);
+                                ByteBuf text = Unpooled.wrappedBuffer(bytes);
+                                FullHttpResponse res =
+                                    new DefaultFullHttpResponse(
+                                        HttpVersion.HTTP_1_1, HttpResponseStatus.OK, text);
+                                res.headers()
+                                    .set(CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.toString());
+                                res.headers().set(CONTENT_LENGTH, bytes.length);
 
-                ctx.writeAndFlush(res);
-              }
-            });
-        }
-      });
+                                ctx.writeAndFlush(res);
+                              }
+                            });
+                  }
+                });
 
-    Path temp = Files.createTempFile("domain-socket-test", "socket");
+    Path temp = Files.createTempFile(Paths.get("/tmp"), "domain-socket-test", "socket");
     Files.deleteIfExists(temp);
 
     SocketAddress address = new DomainSocketAddress(temp.toFile());
     future = bootstrap.bind(address);
 
-    socket = new URI("unix", null, null, 0, temp.toString(), null, null);
+    this.socket = new URI("unix", null, null, 0, temp.toString(), null, null);
   }
 
-  @After
+  @AfterEach
   public void shutdown() {
     Safely.safelyCall(() -> group.shutdownGracefully());
     Safely.safelyCall(() -> future.channel().closeFuture().sync());
   }
 
   @Test
-  public void shouldBeAbleToConnectToAUnixDomainSocketUrl() {
+  void shouldBeAbleToConnectToAUnixDomainSocketUrl() {
     ClientConfig config = ClientConfig.defaultConfig().baseUri(socket);
     HttpClient client = createFactory().createClient(config);
 
@@ -148,5 +155,4 @@ public abstract class DomainSocketsTestBase {
 
     assertThat(Contents.string(res)).isEqualTo(emphaticCheeseEnjoyment);
   }
-
 }

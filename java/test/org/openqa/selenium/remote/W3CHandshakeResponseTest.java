@@ -21,31 +21,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import com.google.common.collect.ImmutableMap;
-
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import java.util.Map;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.SessionNotCreatedException;
-import org.openqa.selenium.testing.UnitTests;
 
-import java.util.Map;
-
-@Category(UnitTests.class)
-public class W3CHandshakeResponseTest {
+@Tag("UnitTests")
+class W3CHandshakeResponseTest {
 
   @Test
-  public void successfulResponseGetsParsedProperly() {
+  void successfulResponseGetsParsedProperly() {
     Capabilities caps = new ImmutableCapabilities("cheese", "peas");
     Map<String, Map<String, Object>> payload =
         ImmutableMap.of(
-            "value", ImmutableMap.of(
-            "capabilities", caps.asMap(),
-            "sessionId", "cheese is opaque"));
-    InitialHandshakeResponse initialResponse = new InitialHandshakeResponse(
-        0,
-        200,
-        payload);
+            "value",
+            ImmutableMap.of("capabilities", caps.asMap(), "sessionId", "cheese is opaque"));
+    InitialHandshakeResponse initialResponse = new InitialHandshakeResponse(0, 200, payload);
 
     ProtocolHandshake.Result result =
         new W3CHandshakeResponse().getResponseFunction().apply(initialResponse);
@@ -55,23 +48,17 @@ public class W3CHandshakeResponseTest {
     Response response = result.createResponse();
 
     assertThat(response.getState()).isEqualTo("success");
-    assertThat((int) response.getStatus()).isEqualTo(0);
+    assertThat((int) response.getStatus()).isZero();
 
     assertThat(response.getValue()).isEqualTo(caps.asMap());
   }
 
   @Test
-  public void shouldIgnoreAJsonWireProtocolReply() {
+  void shouldIgnoreAJsonWireProtocolReply() {
     Capabilities caps = new ImmutableCapabilities("cheese", "peas");
     Map<String, ?> payload =
-        ImmutableMap.of(
-            "status", 0,
-            "value", caps.asMap(),
-            "sessionId", "cheese is opaque");
-    InitialHandshakeResponse initialResponse = new InitialHandshakeResponse(
-        0,
-        200,
-        payload);
+        ImmutableMap.of("status", 0, "value", caps.asMap(), "sessionId", "cheese is opaque");
+    InitialHandshakeResponse initialResponse = new InitialHandshakeResponse(0, 200, payload);
 
     ProtocolHandshake.Result result =
         new W3CHandshakeResponse().getResponseFunction().apply(initialResponse);
@@ -80,16 +67,11 @@ public class W3CHandshakeResponseTest {
   }
 
   @Test
-  public void shouldIgnoreAGeckodriver013Reply() {
+  void shouldIgnoreAGeckodriver013Reply() {
     Capabilities caps = new ImmutableCapabilities("cheese", "peas");
     Map<String, ?> payload =
-        ImmutableMap.of(
-            "value", caps.asMap(),
-            "sessionId", "cheese is opaque");
-    InitialHandshakeResponse initialResponse = new InitialHandshakeResponse(
-        0,
-        200,
-        payload);
+        ImmutableMap.of("value", caps.asMap(), "sessionId", "cheese is opaque");
+    InitialHandshakeResponse initialResponse = new InitialHandshakeResponse(0, 200, payload);
 
     ProtocolHandshake.Result result =
         new W3CHandshakeResponse().getResponseFunction().apply(initialResponse);
@@ -98,22 +80,23 @@ public class W3CHandshakeResponseTest {
   }
 
   @Test
-  public void shouldProperlyPopulateAnError() {
-    Map<String, ?> payload = ImmutableMap.of(
-        "value", ImmutableMap.of(
-            "error", "session not created",
-            "message", "me no likey",
-            "stacktrace", "I have no idea what went wrong"));
+  void shouldProperlyPopulateAnError() {
+    Map<String, ?> payload =
+        ImmutableMap.of(
+            "value",
+            ImmutableMap.of(
+                "error", "session not created",
+                "message", "me no likey",
+                "stacktrace", "I have no idea what went wrong"));
 
-    InitialHandshakeResponse initialResponse = new InitialHandshakeResponse(
-        0,
-        500,
-        payload);
-
+    InitialHandshakeResponse initialResponse = new InitialHandshakeResponse(0, 500, payload);
 
     assertThatExceptionOfType(SessionNotCreatedException.class)
         .isThrownBy(() -> new W3CHandshakeResponse().getResponseFunction().apply(initialResponse))
         .withMessageContaining("me no likey")
-        .satisfies(e -> assertThat(e.getAdditionalInformation()).contains("I have no idea what went wrong"));
+        .satisfies(
+            e ->
+                assertThat(e.getAdditionalInformation())
+                    .contains("I have no idea what went wrong"));
   }
 }

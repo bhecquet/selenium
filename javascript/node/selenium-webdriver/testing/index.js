@@ -39,9 +39,9 @@ const firefox = require('../firefox')
 const ie = require('../ie')
 const remote = require('../remote')
 const safari = require('../safari')
-const opera = require('../opera')
-const { Browser, Capabilities } = require('../lib/capabilities')
+const { Browser } = require('../lib/capabilities')
 const { Builder } = require('../index')
+const { getPath } = require('../common/driverFinder')
 
 /**
  * Describes a browser targeted by a {@linkplain suite test suite}.
@@ -89,7 +89,7 @@ function warn(msg) {
  * Extracts the browsers for a test suite to target from the `SELENIUM_BROWSER`
  * environment variable.
  *
- * @return {{name: string, version: string, platform: string}[]} the browsers to target.
+ * @return {{name: string, version: string, platform: string}}[] the browsers to target.
  */
 function getBrowsersToTestFromEnv() {
   let browsers = process.env['SELENIUM_BROWSER']
@@ -118,20 +118,24 @@ function getAvailableBrowsers() {
   info(`Searching for WebDriver executables installed on the current system...`)
 
   let targets = [
-    [chrome.locateSynchronously, Browser.CHROME],
-    [edge.locateSynchronously, Browser.EDGE],
-    [firefox.locateSynchronously, Browser.FIREFOX],
-    [ie.locateSynchronously, Browser.INTERNET_EXPLORER],
-    [safari.locateSynchronously, Browser.SAFARI],
-    [opera.locateSynchronously, Browser.OPERA],
+    [getPath(new chrome.Options()), Browser.CHROME],
+    [getPath(new edge.Options()), Browser.EDGE],
+    [getPath(new firefox.Options()), Browser.FIREFOX],
   ]
+  if (process.platform === 'win32') {
+    targets.push([getPath(new ie.Options()), Browser.INTERNET_EXPLORER])
+  }
+  if (process.platform === 'darwin') {
+    targets.push([getPath(new safari.Options()), Browser.SAFARI])
+  }
 
   let availableBrowsers = []
   for (let pair of targets) {
-    const fn = pair[0]
+    const driverPath = pair[0].driverPath
+    const browserPath = pair[0].browserPath
     const name = pair[1]
     const capabilities = pair[2]
-    if (fn()) {
+    if (driverPath.length > 0 && browserPath && browserPath.length > 0) {
       info(`... located ${name}`)
       availableBrowsers.push({ name, capabilities })
     }
@@ -236,7 +240,8 @@ function init(force = false) {
 }
 
 const TARGET_MAP = /** !WeakMap<!Environment, !TargetBrowser> */ new WeakMap()
-const URL_MAP = /** !WeakMap<!Environment, ?(string|remote.SeleniumServer)> */ new WeakMap()
+const URL_MAP =
+  /** !WeakMap<!Environment, ?(string|remote.SeleniumServer)> */ new WeakMap()
 
 /**
  * Defines the environment a {@linkplain suite test suite} is running against.
@@ -249,9 +254,9 @@ class Environment {
    *     Selenium server to test against.
    */
   constructor(browser, url = undefined) {
-    browser = /** @type {!TargetBrowser} */ (Object.seal(
-      Object.assign({}, browser)
-    ))
+    browser = /** @type {!TargetBrowser} */ (
+      Object.seal(Object.assign({}, browser))
+    )
 
     TARGET_MAP.set(this, browser)
     URL_MAP.set(this, url || null)
@@ -286,19 +291,16 @@ class Environment {
     const builder = new Builder()
     builder.disableEnvironmentOverrides()
 
-
-
     const realBuild = builder.build
     builder.build = function () {
-      builder.forBrowser(browser.name, browser.version, browser.platform);
-
+      builder.forBrowser(browser.name, browser.version, browser.platform)
 
       if (browser.capabilities) {
-        builder.getCapabilities().merge(browser.capabilities);
+        builder.getCapabilities().merge(browser.capabilities)
       }
 
-      if(browser.name === 'firefox') {
-        builder.setCapability('moz:debuggerAddress', true);
+      if (browser.name === 'firefox') {
+        builder.setCapability('moz:debuggerAddress', true)
       }
 
       if (typeof urlOrServer === 'string') {
@@ -444,7 +446,7 @@ function suite(fn, options = undefined) {
  * @param {function(): boolean} predicateFn A predicate to call to determine
  *     if the test should be suppressed. This function MUST be synchronous.
  * @return {{describe: !Function, it: !Function}} an object with wrapped
- *     versions of the `describe` and `it` wtest functions.
+ *     versions of the `describe` and `it` test functions.
  */
 function ignore(predicateFn) {
   const isJasmine = global.jasmine && typeof global.jasmine === 'object'

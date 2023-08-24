@@ -20,16 +20,15 @@ package org.openqa.selenium;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.openqa.selenium.testing.drivers.Browser.HTMLUNIT;
 
-import org.junit.Test;
-import org.openqa.selenium.testing.JUnit4TestBase;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.testing.JupiterTestBase;
 import org.openqa.selenium.testing.NotYetImplemented;
 
-import java.util.List;
-
-public class SelectElementHandlingTest extends JUnit4TestBase {
+class SelectElementHandlingTest extends JupiterTestBase {
 
   @Test
-  public void testShouldBePossibleToDeselectASingleOptionFromASelectWhichAllowsMultipleChoices() {
+  void testShouldBePossibleToDeselectASingleOptionFromASelectWhichAllowsMultipleChoices() {
     driver.get(pages.formPage);
 
     WebElement multiSelect = driver.findElement(By.id("multi"));
@@ -47,7 +46,7 @@ public class SelectElementHandlingTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToChangeTheSelectedOptionInASelect() {
+  void testShouldBeAbleToChangeTheSelectedOptionInASelect() {
     driver.get(pages.formPage);
     WebElement selectBox = driver.findElement(By.xpath("//select[@name='selectomatic']"));
     List<WebElement> options = selectBox.findElements(By.tagName("option"));
@@ -62,7 +61,7 @@ public class SelectElementHandlingTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToSelectMoreThanOneOptionFromASelectWhichAllowsMultipleChoices() {
+  void testShouldBeAbleToSelectMoreThanOneOptionFromASelectWhichAllowsMultipleChoices() {
     driver.get(pages.formPage);
 
     WebElement multiSelect = driver.findElement(By.id("multi"));
@@ -80,7 +79,7 @@ public class SelectElementHandlingTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldSelectFirstOptionByDefaultIfNoneIsSelected() {
+  void testShouldSelectFirstOptionByDefaultIfNoneIsSelected() {
     driver.get(pages.formPage);
     WebElement selectBox = driver.findElement(By.xpath("//select[@name='select-default']"));
     List<WebElement> options = selectBox.findElements(By.tagName("option"));
@@ -95,7 +94,7 @@ public class SelectElementHandlingTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testCanSelectElementsInOptGroups() {
+  void testCanSelectElementsInOptGroups() {
     driver.get(pages.selectPage);
     WebElement element = driver.findElement(By.id("two-in-group"));
     element.click();
@@ -103,31 +102,32 @@ public class SelectElementHandlingTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testCanGetValueFromOptionViaAttributeWhenAttributeDoesntExist() {
+  void testCanGetValueFromOptionViaAttributeWhenAttributeDoesntExist() {
     driver.get(pages.formPage);
     WebElement element = driver.findElement(By.cssSelector("select[name='select-default'] option"));
     assertThat(element.getAttribute("value")).isEqualTo("One");
     element = driver.findElement(By.id("blankOption"));
-    assertThat(element.getAttribute("value")).isEqualTo("");
+    assertThat(element.getAttribute("value")).isEmpty();
   }
 
   @Test
-  public void testCanGetValueFromOptionViaAttributeWhenAttributeIsEmptyString() {
+  void testCanGetValueFromOptionViaAttributeWhenAttributeIsEmptyString() {
     driver.get(pages.formPage);
     WebElement element = driver.findElement(By.id("optionEmptyValueSet"));
-    assertThat(element.getAttribute("value")).isEqualTo("");
+    assertThat(element.getAttribute("value")).isEmpty();
   }
 
   @Test
-  public void testCanSelectFromMultipleSelectWhereValueIsBelowVisibleRange() {
+  void testCanSelectFromMultipleSelectWhereValueIsBelowVisibleRange() {
     driver.get(pages.selectPage);
-    WebElement option = driver.findElements(By.cssSelector("#selectWithMultipleLongList option")).get(4);
+    WebElement option =
+        driver.findElements(By.cssSelector("#selectWithMultipleLongList option")).get(4);
     option.click();
     assertThat(option.isSelected()).isTrue();
   }
 
   @Test
-  public void testCannotSetDisabledOption() {
+  void testCannotSetDisabledOption() {
     driver.get(pages.selectPage);
     WebElement element = driver.findElement(By.cssSelector("#visibility .disabled"));
     element.click();
@@ -153,7 +153,7 @@ public class SelectElementHandlingTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testCanHandleTransparentSelect() {
+  void testCanHandleTransparentSelect() {
     driver.get(pages.selectPage);
     WebElement element = driver.findElement(By.cssSelector("#transparent option"));
     element.click();

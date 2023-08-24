@@ -18,7 +18,7 @@
 package org.openqa.selenium.interactions;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assume.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.openqa.selenium.WaitingConditions.elementValueToEqual;
 import static org.openqa.selenium.WaitingConditions.windowHandleCountToBe;
 import static org.openqa.selenium.support.ui.ExpectedConditions.presenceOfElementLocated;
@@ -26,14 +26,14 @@ import static org.openqa.selenium.support.ui.ExpectedConditions.titleIs;
 import static org.openqa.selenium.testing.TestUtilities.getEffectivePlatform;
 import static org.openqa.selenium.testing.TestUtilities.getIEVersion;
 import static org.openqa.selenium.testing.TestUtilities.isInternetExplorer;
-import static org.openqa.selenium.testing.TestUtilities.isNativeEventsEnabled;
 import static org.openqa.selenium.testing.drivers.Browser.CHROME;
 import static org.openqa.selenium.testing.drivers.Browser.FIREFOX;
 import static org.openqa.selenium.testing.drivers.Browser.HTMLUNIT;
 import static org.openqa.selenium.testing.drivers.Browser.IE;
 import static org.openqa.selenium.testing.drivers.Browser.SAFARI;
 
-import org.junit.Test;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.JavascriptExecutor;
@@ -43,16 +43,12 @@ import org.openqa.selenium.Point;
 import org.openqa.selenium.WaitingConditions;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.testing.Ignore;
-import org.openqa.selenium.testing.JUnit4TestBase;
+import org.openqa.selenium.testing.JupiterTestBase;
 import org.openqa.selenium.testing.NotYetImplemented;
 import org.openqa.selenium.testing.SwitchToTopAfterTest;
 
-import java.util.List;
-
-/**
- * Tests combined input actions.
- */
-public class CombinedInputActionsTest extends JUnit4TestBase {
+/** Tests combined input actions. */
+class CombinedInputActionsTest extends JupiterTestBase {
 
   @Test
   @Ignore(IE)
@@ -63,10 +59,8 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     List<WebElement> options = driver.findElements(By.tagName("option"));
 
     Actions actions = new Actions(driver);
-    Action selectThreeOptions = actions.click(options.get(1))
-        .click(options.get(2))
-        .click(options.get(3))
-        .build();
+    Action selectThreeOptions =
+        actions.click(options.get(1)).click(options.get(2)).click(options.get(3)).build();
 
     selectThreeOptions.perform();
 
@@ -75,7 +69,8 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
 
     WebElement resultElement = driver.findElement(By.id("result"));
     assertThat(resultElement.getText())
-        .describedAs("Should have picked the third option only").isEqualTo("cheddar");
+        .describedAs("Should have picked the third option only")
+        .isEqualTo("cheddar");
   }
 
   @Test
@@ -87,11 +82,13 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     List<WebElement> options = driver.findElements(By.tagName("option"));
 
     Actions actions = new Actions(driver);
-    Action selectThreeOptions = actions.click(options.get(1))
-        .keyDown(Keys.SHIFT)
-        .click(options.get(3))
-        .keyUp(Keys.SHIFT)
-        .build();
+    Action selectThreeOptions =
+        actions
+            .click(options.get(1))
+            .keyDown(Keys.SHIFT)
+            .click(options.get(3))
+            .keyUp(Keys.SHIFT)
+            .build();
 
     selectThreeOptions.perform();
 
@@ -113,14 +110,16 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     List<WebElement> options = driver.findElements(By.tagName("option"));
 
     Actions actions = new Actions(driver);
-    Action selectThreeOptions = actions.setActivePointer(PointerInput.Kind.PEN, "default pen")
-      .click(options.get(1))
-      .keyDown(Keys.SHIFT)
-      .click(options.get(1))
-      .setActivePointer(PointerInput.Kind.MOUSE, "default mouse")
-      .click(options.get(3))
-      .keyUp(Keys.SHIFT)
-      .build();
+    Action selectThreeOptions =
+        actions
+            .setActivePointer(PointerInput.Kind.PEN, "default pen")
+            .click(options.get(1))
+            .keyDown(Keys.SHIFT)
+            .click(options.get(1))
+            .setActivePointer(PointerInput.Kind.MOUSE, "default mouse")
+            .click(options.get(3))
+            .keyUp(Keys.SHIFT)
+            .build();
 
     selectThreeOptions.perform();
 
@@ -129,26 +128,28 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
 
     WebElement resultElement = driver.findElement(By.id("result"));
     assertThat(resultElement.getText())
-      .describedAs("Should have picked the last three options")
-      .isEqualTo("roquefort parmigiano cheddar");
+        .describedAs("Should have picked the last three options")
+        .isEqualTo("roquefort parmigiano cheddar");
   }
 
   @Test
   @Ignore(IE)
   @Ignore(value = FIREFOX, travis = true)
   public void testControlClickingOnMultiSelectionList() {
-    assumeFalse("FIXME: macs don't have CONTROL key",
-                getEffectivePlatform(driver).is(Platform.MAC));
+    assumeFalse(
+        getEffectivePlatform(driver).is(Platform.MAC), "FIXME: macs don't have CONTROL key");
     driver.get(pages.formSelectionPage);
 
     List<WebElement> options = driver.findElements(By.tagName("option"));
 
     Actions actions = new Actions(driver);
-    Action selectThreeOptions = actions.click(options.get(1))
-        .keyDown(Keys.CONTROL)
-        .click(options.get(3))
-        .keyUp(Keys.CONTROL)
-        .build();
+    Action selectThreeOptions =
+        actions
+            .click(options.get(1))
+            .keyDown(Keys.CONTROL)
+            .click(options.get(3))
+            .keyUp(Keys.CONTROL)
+            .build();
 
     selectThreeOptions.perform();
 
@@ -175,12 +176,14 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     List<WebElement> listItems = driver.findElements(By.tagName("li"));
 
     Actions actions = new Actions(driver);
-    Action selectThreeItems = actions.keyDown(key)
-        .click(listItems.get(1))
-        .click(listItems.get(3))
-        .click(listItems.get(5))
-        .keyUp(key)
-        .build();
+    Action selectThreeItems =
+        actions
+            .keyDown(key)
+            .click(listItems.get(1))
+            .click(listItems.get(3))
+            .click(listItems.get(5))
+            .keyUp(key)
+            .build();
 
     selectThreeItems.perform();
 
@@ -206,16 +209,17 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     List<WebElement> listItems = driver.findElements(By.tagName("li"));
 
     Actions actions = new Actions(driver);
-    Action selectThreeItems = actions
-      .keyDown(key)
-      .setActivePointer(PointerInput.Kind.PEN, "default pen")
-      .click(listItems.get(1))
-      .setActivePointer(PointerInput.Kind.MOUSE, "default mouse")
-      .click(listItems.get(3))
-      .setActivePointer(PointerInput.Kind.PEN, "default pen")
-      .click(listItems.get(5))
-      .keyUp(key)
-      .build();
+    Action selectThreeItems =
+        actions
+            .keyDown(key)
+            .setActivePointer(PointerInput.Kind.PEN, "default pen")
+            .click(listItems.get(1))
+            .setActivePointer(PointerInput.Kind.MOUSE, "default mouse")
+            .click(listItems.get(3))
+            .setActivePointer(PointerInput.Kind.PEN, "default pen")
+            .click(listItems.get(5))
+            .keyUp(key)
+            .build();
 
     selectThreeItems.perform();
 
@@ -228,16 +232,14 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     wait.until(presenceOfElementLocated(By.id("normal")));
     WebElement link = driver.findElement(By.id("normal"));
 
-    new Actions(driver)
-        .click(link)
-        .perform();
+    new Actions(driver).click(link).perform();
 
     wait.until(titleIs("XHTML Test Page"));
   }
 
   @SwitchToTopAfterTest
   @Test
-  public void canMoveMouseToAnElementInAnIframeAndClick() {
+  void canMoveMouseToAnElementInAnIframeAndClick() {
     driver.get(appServer.whereIs("click_tests/click_in_iframe.html"));
 
     wait.until(presenceOfElementLocated(By.id("ifr")));
@@ -245,16 +247,13 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
 
     WebElement link = driver.findElement(By.id("link"));
 
-    new Actions(driver)
-        .moveToElement(link)
-        .click()
-        .perform();
+    new Actions(driver).moveToElement(link).click().perform();
 
     wait.until(titleIs("Submitted Successfully!"));
   }
 
   @Test
-  public void testCanClickOnLinks() {
+  void testCanClickOnLinks() {
     navigateToClicksPageAndClickLink();
   }
 
@@ -266,10 +265,7 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     wait.until(presenceOfElementLocated(By.id("normal")));
     WebElement link = driver.findElement(By.id("normal"));
 
-    new Actions(driver)
-        .moveToElement(link, 1, 1)
-        .click()
-        .perform();
+    new Actions(driver).moveToElement(link, 1, 1).click().perform();
 
     wait.until(titleIs("XHTML Test Page"));
   }
@@ -306,14 +302,13 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
   private boolean fuzzyPositionMatching(int expectedX, int expectedY, int actualX, int actualY) {
     // Everything within 5 pixels range is OK
     final int ALLOWED_DEVIATION = 5;
-    return Math.abs(expectedX - actualX) < ALLOWED_DEVIATION &&
-           Math.abs(expectedY - actualY) < ALLOWED_DEVIATION;
+    return Math.abs(expectedX - actualX) < ALLOWED_DEVIATION
+        && Math.abs(expectedY - actualY) < ALLOWED_DEVIATION;
   }
 
   /**
-   * This test demonstrates the following problem: When the representation of
-   * the mouse in the driver keeps the wrong state, mouse movement will end
-   * up at the wrong coordinates.
+   * This test demonstrates the following problem: When the representation of the mouse in the
+   * driver keeps the wrong state, mouse movement will end up at the wrong coordinates.
    */
   @Test
   @NotYetImplemented(HTMLUNIT)
@@ -321,10 +316,7 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     navigateToClicksPageAndClickLink();
 
     WebElement linkId = driver.findElement(By.id("linkId"));
-    new Actions(driver)
-        .moveToElement(linkId, 1, 1)
-        .click()
-        .perform();
+    new Actions(driver).moveToElement(linkId, 1, 1).click().perform();
 
     wait.until(titleIs("We Arrive Here"));
   }
@@ -333,38 +325,30 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
   @Ignore(value = FIREFOX, issue = "https://github.com/mozilla/geckodriver/issues/646")
   @NotYetImplemented(CHROME)
   public void testChordControlCutAndPaste() {
-    assumeFalse("FIXME: macs don't have CONTROL key",
-                getEffectivePlatform(driver).is(Platform.MAC));
-    assumeFalse("Windows: native events library  does not support storing modifiers state yet",
-                isNativeEventsEnabled(driver) &&
-                getEffectivePlatform(driver).is(Platform.WINDOWS) &&
-                isInternetExplorer(driver));
+    assumeFalse(
+        getEffectivePlatform(driver).is(Platform.MAC), "FIXME: macs don't have CONTROL key");
+    assumeFalse(
+        getEffectivePlatform(driver).is(Platform.WINDOWS) && isInternetExplorer(driver),
+        "Windows: native events library  does not support storing modifiers state yet");
 
     driver.get(pages.javascriptPage);
 
     WebElement element = driver.findElement(By.id("keyReporter"));
 
-    new Actions(driver)
-        .sendKeys(element, "abc def")
-        .perform();
+    new Actions(driver).sendKeys(element, "abc def").perform();
 
     wait.until(elementValueToEqual(element, "abc def"));
 
-    //TODO: Figure out why calling sendKey(Key.CONTROL + "a") and then
-    //sendKeys("x") does not work on Linux.
-    new Actions(driver)
-        .sendKeys(Keys.CONTROL + "a" + "x")
-        .perform();
+    // TODO: Figure out why calling sendKey(Key.CONTROL + "a") and then
+    // sendKeys("x") does not work on Linux.
+    new Actions(driver).sendKeys(Keys.CONTROL + "a" + "x").perform();
 
     // Release keys before next step.
     new Actions(driver).sendKeys(Keys.NULL).perform();
 
     wait.until(elementValueToEqual(element, ""));
 
-    new Actions(driver)
-        .sendKeys(Keys.CONTROL + "v")
-        .sendKeys("v")
-        .perform();
+    new Actions(driver).sendKeys(Keys.CONTROL + "v").sendKeys("v").perform();
 
     new Actions(driver).sendKeys(Keys.NULL).perform();
 
@@ -380,16 +364,12 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     String originalTitle = driver.getTitle();
 
     int nWindows = driver.getWindowHandles().size();
-    new Actions(driver)
-        .moveToElement(link)
-        .keyDown(Keys.SHIFT)
-        .click()
-        .keyUp(Keys.SHIFT)
-        .perform();
+    new Actions(driver).moveToElement(link).keyDown(Keys.SHIFT).click().keyUp(Keys.SHIFT).perform();
 
     wait.until(windowHandleCountToBe(nWindows + 1));
     assertThat(driver.getTitle())
-        .describedAs("Should not have navigated away").isEqualTo(originalTitle);
+        .describedAs("Should not have navigated away")
+        .isEqualTo(originalTitle);
   }
 
   @Test
@@ -418,7 +398,7 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     WebElement element = driver.findElement(By.id("menu1"));
 
     final WebElement item = driver.findElement(By.id("item1"));
-    assertThat(item.getText()).isEqualTo("");
+    assertThat(item.getText()).isEmpty();
 
     ((JavascriptExecutor) driver).executeScript("arguments[0].style.background = 'green'", element);
     new Actions(driver).moveToElement(element).build().perform();
@@ -433,7 +413,7 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testCanClickOnSuckerFishMenuItem() {
+  void testCanClickOnSuckerFishMenuItem() {
     driver.get(pages.javascriptPage);
 
     WebElement element = driver.findElement(By.id("menu1"));
@@ -448,5 +428,4 @@ public class CombinedInputActionsTest extends JUnit4TestBase {
     String text = driver.findElement(By.id("result")).getText();
     assertThat(text).contains("item 1");
   }
-
 }

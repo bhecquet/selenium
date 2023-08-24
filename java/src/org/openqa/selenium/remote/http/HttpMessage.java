@@ -17,30 +17,24 @@
 
 package org.openqa.selenium.remote.http;
 
+import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 import com.google.common.net.MediaType;
-
-import org.openqa.selenium.internal.Require;
-
 import java.io.InputStream;
-import java.io.Reader;
 import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.openqa.selenium.internal.Require;
 
-import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.openqa.selenium.remote.http.Contents.bytes;
-import static org.openqa.selenium.remote.http.Contents.reader;
-import static org.openqa.selenium.remote.http.Contents.string;
-
-abstract class HttpMessage<M extends HttpMessage<M>>  {
+abstract class HttpMessage<M extends HttpMessage<M>> {
 
   private final Multimap<String, String> headers = ArrayListMultimap.create();
   private final Map<String, Object> attributes = new HashMap<>();
@@ -72,7 +66,7 @@ abstract class HttpMessage<M extends HttpMessage<M>>  {
   }
 
   public Iterable<String> getHeaderNames() {
-    return headers.keySet();
+    return Collections.unmodifiableCollection(headers.keySet());
   }
 
   public Iterable<String> getHeaders(String name) {
@@ -84,16 +78,12 @@ abstract class HttpMessage<M extends HttpMessage<M>>  {
   }
 
   public String getHeader(String name) {
-    Iterable<String> initialHeaders = getHeaders(name);
-    if (initialHeaders == null) {
-      return null;
-    }
-
-    Iterator<String> headers = initialHeaders.iterator();
-    if (headers.hasNext()) {
-      return headers.next();
-    }
-    return null;
+    return headers.entries().stream()
+        .filter(e -> Objects.nonNull(e.getKey()))
+        .filter(e -> e.getKey().equalsIgnoreCase(name.toLowerCase()))
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse(null);
   }
 
   public M setHeader(String name, String value) {
@@ -106,10 +96,7 @@ abstract class HttpMessage<M extends HttpMessage<M>>  {
   }
 
   public M removeHeader(String name) {
-    String toRemove = headers.keySet().stream()
-      .filter(header -> header.equalsIgnoreCase(name))
-      .findFirst().orElse(name);
-    headers.removeAll(toRemove);
+    headers.keySet().removeIf(header -> header.equalsIgnoreCase(name));
     return self();
   }
 
@@ -127,22 +114,6 @@ abstract class HttpMessage<M extends HttpMessage<M>>  {
     return charset;
   }
 
-  /**
-   * @deprecated Pass {@link Contents#bytes(byte[])} to {@link #setContent(Supplier)}.
-   */
-  @Deprecated
-  public void setContent(byte[] data) {
-    setContent(bytes(data));
-  }
-
-  /**
-   * @deprecated Pass {@code () -> toStreamFrom} to {@link #setContent(Supplier)}.
-   */
-  @Deprecated
-  public void setContent(InputStream toStreamFrom) {
-    setContent(() -> toStreamFrom);
-  }
-
   public M setContent(Supplier<InputStream> supplier) {
     this.content = Require.nonNull("Supplier", supplier);
     return self();
@@ -152,43 +123,8 @@ abstract class HttpMessage<M extends HttpMessage<M>>  {
     return content;
   }
 
-  /**
-   * @deprecated Use {@link Contents#string(HttpMessage)} instead.
-   */
-  @Deprecated
-  public String getContentString() {
-    return string(this);
-  }
-
-  /**
-   * @deprecated Use {@link Contents#reader(HttpMessage)} instead.
-   */
-  @Deprecated
-  public Reader getContentReader() {
-    return reader(this);
-  }
-
-  /**
-   * @deprecated Use {@link #getContent()} and call {@link Supplier#get()}.
-   */
-  @Deprecated
-  public InputStream getContentStream() {
-    return getContent().get();
-  }
-
-  /**
-   * Get the underlying content stream, bypassing the caching mechanisms that allow it to be read
-   * again.
-   * @deprecated No direct replacement. Use {@link #getContent()} and call {@link Supplier#get()}.
-   */
-  @Deprecated
-  public InputStream consumeContentStream() {
-    return getContent().get();
-  }
-
   @SuppressWarnings("unchecked")
   private M self() {
     return (M) this;
   }
 }
-

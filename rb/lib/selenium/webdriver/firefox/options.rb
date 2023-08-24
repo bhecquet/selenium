@@ -57,7 +57,8 @@ module Selenium
         #
 
         def initialize(log_level: nil, **opts)
-          @debugger_address = opts.delete(:debugger_address)
+          @debugger_address = opts.delete(:debugger_address) { true }
+          opts[:accept_insecure_certs] = true unless opts.key?(:accept_insecure_certs)
 
           super(**opts)
 
@@ -96,18 +97,6 @@ module Selenium
 
         def add_preference(name, value)
           @options[:prefs][name] = value
-        end
-
-        #
-        # Run Firefox in headless mode.
-        #
-        # @example Enable headless mode
-        #   options = Selenium::WebDriver::Firefox::Options.new
-        #   options.headless!
-        #
-
-        def headless!
-          add_argument '-headless'
         end
 
         #
@@ -177,7 +166,7 @@ module Selenium
         end
 
         def camelize?(key)
-          key != "prefs"
+          key != 'prefs'
         end
       end # Options
     end # Firefox

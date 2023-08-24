@@ -1,5 +1,6 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
-load("//java:defs.bzl", "java_test_suite")
+load("//java:defs.bzl", "JUNIT5_DEPS", "java_test_suite")
+load("//java:version.bzl", "TOOLS_JAVA_VERSION")
 
 java_test_suite(
     name = "small-tests",
@@ -7,7 +8,7 @@ java_test_suite(
     srcs = glob(["*.java"]),
     javacopts = [
         "--release",
-        "11",
+        TOOLS_JAVA_VERSION,
     ],
     deps = [
         "//java/src/org/openqa/selenium/events",
@@ -25,7 +26,8 @@ java_test_suite(
         "//java/test/org/openqa/selenium/testing:test-base",
         artifact("com.google.guava:guava"),
         artifact("io.opentelemetry:opentelemetry-api"),
-        artifact("junit:junit"),
+        artifact("org.junit.jupiter:junit-jupiter-api"),
+        artifact("org.junit.jupiter:junit-jupiter-params"),
         artifact("org.assertj:assertj-core"),
-    ],
+    ] + JUNIT5_DEPS,
 )

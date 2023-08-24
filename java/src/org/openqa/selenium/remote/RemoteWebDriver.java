@@ -19,68 +19,15 @@ package org.openqa.selenium.remote;
 
 import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.openqa.selenium.remote.CapabilityType.LOGGING_PREFS;
-import static org.openqa.selenium.remote.CapabilityType.PLATFORM;
+import static java.util.logging.Level.SEVERE;
 import static org.openqa.selenium.remote.CapabilityType.PLATFORM_NAME;
-import static org.openqa.selenium.remote.CapabilityType.SUPPORTS_JAVASCRIPT;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-
-import org.openqa.selenium.Alert;
-import org.openqa.selenium.Beta;
-import org.openqa.selenium.By;
-import org.openqa.selenium.Capabilities;
-import org.openqa.selenium.Cookie;
-import org.openqa.selenium.Dimension;
-import org.openqa.selenium.HasCapabilities;
-import org.openqa.selenium.ImmutableCapabilities;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.MutableCapabilities;
-import org.openqa.selenium.NoSuchFrameException;
-import org.openqa.selenium.NoSuchWindowException;
-import org.openqa.selenium.OutputType;
-import org.openqa.selenium.Pdf;
-import org.openqa.selenium.Platform;
-import org.openqa.selenium.Point;
-import org.openqa.selenium.PrintsPage;
-import org.openqa.selenium.SearchContext;
-import org.openqa.selenium.SessionNotCreatedException;
-import org.openqa.selenium.TakesScreenshot;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebDriverException;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.WindowType;
-import org.openqa.selenium.devtools.DevTools;
-import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.interactions.HasInputDevices;
-import org.openqa.selenium.interactions.Interactive;
-import org.openqa.selenium.interactions.Keyboard;
-import org.openqa.selenium.interactions.Mouse;
-import org.openqa.selenium.interactions.Sequence;
-import org.openqa.selenium.internal.Require;
-import org.openqa.selenium.logging.LocalLogs;
-import org.openqa.selenium.logging.LogType;
-import org.openqa.selenium.logging.LoggingHandler;
-import org.openqa.selenium.logging.LoggingPreferences;
-import org.openqa.selenium.logging.Logs;
-import org.openqa.selenium.logging.NeedsLocalLogs;
-import org.openqa.selenium.print.PrintOptions;
-import org.openqa.selenium.remote.http.ClientConfig;
-import org.openqa.selenium.remote.http.ConnectionFailedException;
-import org.openqa.selenium.remote.http.HttpClient;
-import org.openqa.selenium.remote.internal.WebElementToJsonConverter;
-import org.openqa.selenium.remote.tracing.TracedHttpClient;
-import org.openqa.selenium.remote.tracing.Tracer;
-import org.openqa.selenium.remote.tracing.opentelemetry.OpenTelemetryTracer;
-import org.openqa.selenium.virtualauthenticator.Credential;
-import org.openqa.selenium.virtualauthenticator.HasVirtualAuthenticator;
-import org.openqa.selenium.virtualauthenticator.VirtualAuthenticator;
-import org.openqa.selenium.virtualauthenticator.VirtualAuthenticatorOptions;
-
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
@@ -96,21 +43,75 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static java.util.logging.Level.SEVERE;
+import org.openqa.selenium.AcceptedW3CCapabilityKeys;
+import org.openqa.selenium.Alert;
+import org.openqa.selenium.Beta;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Capabilities;
+import org.openqa.selenium.Cookie;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.HasCapabilities;
+import org.openqa.selenium.ImmutableCapabilities;
+import org.openqa.selenium.JavascriptException;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.MutableCapabilities;
+import org.openqa.selenium.NoAlertPresentException;
+import org.openqa.selenium.NoSuchFrameException;
+import org.openqa.selenium.NoSuchWindowException;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.Pdf;
+import org.openqa.selenium.Platform;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.PrintsPage;
+import org.openqa.selenium.ScriptKey;
+import org.openqa.selenium.SearchContext;
+import org.openqa.selenium.SessionNotCreatedException;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.UnpinnedScriptKey;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.WindowType;
+import org.openqa.selenium.bidi.BiDi;
+import org.openqa.selenium.bidi.HasBiDi;
+import org.openqa.selenium.devtools.DevTools;
+import org.openqa.selenium.devtools.HasDevTools;
+import org.openqa.selenium.federatedcredentialmanagement.FederatedCredentialManagementDialog;
+import org.openqa.selenium.federatedcredentialmanagement.HasFederatedCredentialManagement;
+import org.openqa.selenium.interactions.Interactive;
+import org.openqa.selenium.interactions.Sequence;
+import org.openqa.selenium.internal.Debug;
+import org.openqa.selenium.internal.Require;
+import org.openqa.selenium.json.TypeToken;
+import org.openqa.selenium.logging.LocalLogs;
+import org.openqa.selenium.logging.LoggingHandler;
+import org.openqa.selenium.logging.Logs;
+import org.openqa.selenium.logging.NeedsLocalLogs;
+import org.openqa.selenium.print.PrintOptions;
+import org.openqa.selenium.remote.http.ClientConfig;
+import org.openqa.selenium.remote.http.ConnectionFailedException;
+import org.openqa.selenium.remote.http.HttpClient;
+import org.openqa.selenium.remote.internal.WebElementToJsonConverter;
+import org.openqa.selenium.remote.tracing.TracedHttpClient;
+import org.openqa.selenium.remote.tracing.Tracer;
+import org.openqa.selenium.remote.tracing.opentelemetry.OpenTelemetryTracer;
+import org.openqa.selenium.virtualauthenticator.Credential;
+import org.openqa.selenium.virtualauthenticator.HasVirtualAuthenticator;
+import org.openqa.selenium.virtualauthenticator.VirtualAuthenticator;
+import org.openqa.selenium.virtualauthenticator.VirtualAuthenticatorOptions;
 
 @Augmentable
-public class RemoteWebDriver implements WebDriver,
-  JavascriptExecutor,
-  HasInputDevices,
-  HasCapabilities,
-  HasVirtualAuthenticator,
-  Interactive,
-  PrintsPage,
-  TakesScreenshot {
+public class RemoteWebDriver
+    implements WebDriver,
+        JavascriptExecutor,
+        HasCapabilities,
+        HasFederatedCredentialManagement,
+        HasVirtualAuthenticator,
+        Interactive,
+        PrintsPage,
+        TakesScreenshot {
 
-  // TODO: This static logger should be unified with the per-instance localLogs
-  private static final Logger logger = Logger.getLogger(RemoteWebDriver.class.getName());
+  private static final Logger LOG = Logger.getLogger(RemoteWebDriver.class.getName());
   private final ElementLocation elementLocation = new ElementLocation();
   private Level level = Level.FINE;
   private ErrorHandler errorHandler = new ErrorHandler();
@@ -122,8 +123,6 @@ public class RemoteWebDriver implements WebDriver,
 
   private JsonToWebElementConverter converter;
 
-  private RemoteKeyboard keyboard;
-  private RemoteMouse mouse;
   private Logs remoteLogs;
   private LocalLogs localLogs;
 
@@ -133,28 +132,28 @@ public class RemoteWebDriver implements WebDriver,
   }
 
   public RemoteWebDriver(Capabilities capabilities) {
-    this(getDefaultServerURL(),
-         Require.nonNull("Capabilities", capabilities), true);
+    this(getDefaultServerURL(), Require.nonNull("Capabilities", capabilities), true);
   }
 
   public RemoteWebDriver(Capabilities capabilities, boolean enableTracing) {
-    this(getDefaultServerURL(),
-         Require.nonNull("Capabilities", capabilities), enableTracing);
+    this(getDefaultServerURL(), Require.nonNull("Capabilities", capabilities), enableTracing);
   }
 
   public RemoteWebDriver(URL remoteAddress, Capabilities capabilities) {
-    this(createExecutor(Require.nonNull("Server URL", remoteAddress), true),
-         Require.nonNull("Capabilities", capabilities));
+    this(
+        createExecutor(Require.nonNull("Server URL", remoteAddress), true),
+        Require.nonNull("Capabilities", capabilities));
   }
 
   public RemoteWebDriver(URL remoteAddress, Capabilities capabilities, boolean enableTracing) {
-    this(createExecutor(Require.nonNull("Server URL", remoteAddress), enableTracing),
-         Require.nonNull("Capabilities", capabilities));
+    this(
+        createExecutor(Require.nonNull("Server URL", remoteAddress), enableTracing),
+        Require.nonNull("Capabilities", capabilities));
   }
 
   public RemoteWebDriver(CommandExecutor executor, Capabilities capabilities) {
     this.executor = Require.nonNull("Command executor", executor);
-    capabilities = init(capabilities);
+    this.capabilities = init(capabilities);
 
     if (executor instanceof NeedsLocalLogs) {
       ((NeedsLocalLogs) executor).setLocalLogs(localLogs);
@@ -185,10 +184,11 @@ public class RemoteWebDriver implements WebDriver,
     ClientConfig config = ClientConfig.defaultConfig().baseUrl(remoteAddress);
     if (enableTracing) {
       Tracer tracer = OpenTelemetryTracer.getInstance();
-      CommandExecutor executor = new HttpCommandExecutor(
-        Collections.emptyMap(),
-        config,
-        new TracedHttpClient.Factory(tracer, HttpClient.Factory.createDefault()));
+      CommandExecutor executor =
+          new HttpCommandExecutor(
+              Collections.emptyMap(),
+              config,
+              new TracedHttpClient.Factory(tracer, HttpClient.Factory.createDefault()));
       return new TracedCommandExecutor(executor, tracer);
     } else {
       return new HttpCommandExecutor(config);
@@ -203,33 +203,18 @@ public class RemoteWebDriver implements WebDriver,
   private Capabilities init(Capabilities capabilities) {
     capabilities = capabilities == null ? new ImmutableCapabilities() : capabilities;
 
-    logger.addHandler(LoggingHandler.getInstance());
+    LOG.addHandler(LoggingHandler.getInstance());
 
     converter = new JsonToWebElementConverter(this);
     executeMethod = new RemoteExecuteMethod(this);
-    keyboard = new RemoteKeyboard(executeMethod);
-    mouse = new RemoteMouse(executeMethod);
 
     ImmutableSet.Builder<String> builder = new ImmutableSet.Builder<>();
-
-    boolean isProfilingEnabled = capabilities.is(CapabilityType.ENABLE_PROFILING_CAPABILITY);
-    if (isProfilingEnabled) {
-      builder.add(LogType.PROFILER);
-    }
-
-    LoggingPreferences mergedLoggingPrefs = new LoggingPreferences();
-    mergedLoggingPrefs.addPreferences((LoggingPreferences) capabilities.getCapability(LOGGING_PREFS));
-
-    if (!mergedLoggingPrefs.getEnabledLogTypes().contains(LogType.CLIENT) ||
-        mergedLoggingPrefs.getLevel(LogType.CLIENT) != Level.OFF) {
-      builder.add(LogType.CLIENT);
-    }
 
     Set<String> logTypesToInclude = builder.build();
 
     LocalLogs performanceLogger = LocalLogs.getStoringLoggerInstance(logTypesToInclude);
-    LocalLogs clientLogs = LocalLogs.getHandlerBasedLoggerInstance(
-      LoggingHandler.getInstance(), logTypesToInclude);
+    LocalLogs clientLogs =
+        LocalLogs.getHandlerBasedLoggerInstance(LoggingHandler.getInstance(), logTypesToInclude);
     localLogs = LocalLogs.getCombinedLogsHolder(clientLogs, performanceLogger);
     remoteLogs = new RemoteLogs(executeMethod, localLogs);
 
@@ -245,32 +230,33 @@ public class RemoteWebDriver implements WebDriver,
   }
 
   protected void startSession(Capabilities capabilities) {
+    checkNonW3CCapabilities(capabilities);
+    checkChromeW3CFalse(capabilities);
+
     Response response = execute(DriverCommand.NEW_SESSION(singleton(capabilities)));
 
     if (response == null) {
       throw new SessionNotCreatedException(
-        "The underlying command executor returned a null response.");
+          "The underlying command executor returned a null response.");
     }
 
     Object responseValue = response.getValue();
 
     if (responseValue == null) {
       throw new SessionNotCreatedException(
-        "The underlying command executor returned a response without payload: " +
-        response.toString());
+          "The underlying command executor returned a response without payload: " + response);
     }
 
     if (!(responseValue instanceof Map)) {
       throw new SessionNotCreatedException(
-        "The underlying command executor returned a response with a non well formed payload: " +
-        response.toString());
+          "The underlying command executor returned a response with a non well formed payload: "
+              + response);
     }
 
-    @SuppressWarnings("unchecked") Map<String, Object> rawCapabilities = (Map<String, Object>) responseValue;
+    @SuppressWarnings("unchecked")
+    Map<String, Object> rawCapabilities = (Map<String, Object>) responseValue;
     MutableCapabilities returnedCapabilities = new MutableCapabilities(rawCapabilities);
-    String platformString = (String) rawCapabilities.getOrDefault(
-      PLATFORM,
-      rawCapabilities.get(PLATFORM_NAME));
+    String platformString = (String) rawCapabilities.get(PLATFORM_NAME);
     Platform platform;
     try {
       if (platformString == null || "".equals(platformString)) {
@@ -283,19 +269,7 @@ public class RemoteWebDriver implements WebDriver,
       // system property. Try to recover and parse this.
       platform = Platform.extractFromSysProperty(platformString);
     }
-    returnedCapabilities.setCapability(PLATFORM, platform);
     returnedCapabilities.setCapability(PLATFORM_NAME, platform);
-
-    if (rawCapabilities.containsKey(SUPPORTS_JAVASCRIPT)) {
-      Object raw = rawCapabilities.get(SUPPORTS_JAVASCRIPT);
-      if (raw instanceof String) {
-        returnedCapabilities.setCapability(SUPPORTS_JAVASCRIPT, Boolean.parseBoolean((String) raw));
-      } else if (raw instanceof Boolean) {
-        returnedCapabilities.setCapability(SUPPORTS_JAVASCRIPT, ((Boolean) raw).booleanValue());
-      }
-    } else {
-      returnedCapabilities.setCapability(SUPPORTS_JAVASCRIPT, true);
-    }
 
     this.capabilities = returnedCapabilities;
     sessionId = new SessionId(response.getSessionId());
@@ -319,7 +293,7 @@ public class RemoteWebDriver implements WebDriver,
 
   @Override
   public Capabilities getCapabilities() {
-    if(capabilities == null){
+    if (capabilities == null) {
       return new ImmutableCapabilities();
     }
     return capabilities;
@@ -356,9 +330,11 @@ public class RemoteWebDriver implements WebDriver,
     } else if (result instanceof byte[]) {
       return outputType.convertFromPngBytes((byte[]) result);
     } else {
-      throw new RuntimeException(String.format("Unexpected result for %s command: %s",
-          DriverCommand.SCREENSHOT,
-          result == null ? "null" : result.getClass().getName() + " instance"));
+      throw new RuntimeException(
+          String.format(
+              "Unexpected result for %s command: %s",
+              DriverCommand.SCREENSHOT,
+              result == null ? "null" : result.getClass().getName() + " instance"));
     }
   }
 
@@ -378,9 +354,7 @@ public class RemoteWebDriver implements WebDriver,
   }
 
   WebElement findElement(
-    SearchContext context,
-    BiFunction<String, Object, CommandPayload> findCommand,
-    By locator) {
+      SearchContext context, BiFunction<String, Object, CommandPayload> findCommand, By locator) {
 
     return elementLocation.findElement(this, context, findCommand, locator);
   }
@@ -393,27 +367,9 @@ public class RemoteWebDriver implements WebDriver,
   }
 
   public List<WebElement> findElements(
-    SearchContext context,
-    BiFunction<String, Object, CommandPayload> findCommand,
-    By locator) {
+      SearchContext context, BiFunction<String, Object, CommandPayload> findCommand, By locator) {
 
     return elementLocation.findElements(this, context, findCommand, locator);
-  }
-
-  /**
-   * @deprecated Rely on using {@link By.Remotable} instead
-   */
-  @Deprecated
-  protected WebElement findElement(String by, String using) {
-    throw new UnsupportedOperationException("`findElement` has been replaced by usages of " + By.Remotable.class);
-  }
-
-  /**
-   * @deprecated Rely on using {@link By.Remotable} instead
-   */
-  @Deprecated
-  protected List<WebElement> findElements(String by, String using) {
-    throw new UnsupportedOperationException("`findElement` has been replaced by usages of " + By.Remotable.class);
   }
 
   protected void setFoundBy(SearchContext context, WebElement element, String by, String using) {
@@ -435,7 +391,8 @@ public class RemoteWebDriver implements WebDriver,
   public void close() {
     if (this instanceof HasDevTools) {
       // This is a brute force approach to "solving" the problem of a hanging
-      // CDP connection. Take a look at https://github.com/aslushnikov/getting-started-with-cdp#session-hierarchy
+      // CDP connection. Take a look at
+      // https://github.com/aslushnikov/getting-started-with-cdp#session-hierarchy
       // to get up to speed, but essentially if the page session of the
       // first browser window is closed, the next CDP command will hang
       // indefinitely. To prevent that from happening, we close the current
@@ -443,13 +400,22 @@ public class RemoteWebDriver implements WebDriver,
 
       try {
         ((HasDevTools) this).maybeGetDevTools().ifPresent(DevTools::disconnectSession);
-      }
-      catch (ConnectionFailedException unableToEstablishWebsocketConnection) {
-        logger.log(SEVERE, "Failed to disconnect DevTools session", unableToEstablishWebsocketConnection);
+      } catch (ConnectionFailedException unableToEstablishWebsocketConnection) {
+        LOG.log(
+            SEVERE, "Failed to disconnect DevTools session", unableToEstablishWebsocketConnection);
       }
     }
 
-    execute(DriverCommand.CLOSE);
+    Response response = execute(DriverCommand.CLOSE);
+    Object value = response.getValue();
+    List<String> windowHandles = (ArrayList<String>) value;
+
+    if (windowHandles.isEmpty() && this instanceof HasBiDi) {
+      // If no top-level browsing contexts are open after calling close, it indicates that the
+      // WebDriver session is closed.
+      // If the WebDriver session is closed, the BiDi session also needs to be closed.
+      ((HasBiDi) this).maybeGetBiDi().ifPresent(BiDi::close);
+    }
   }
 
   @Override
@@ -460,6 +426,14 @@ public class RemoteWebDriver implements WebDriver,
     }
 
     try {
+      if (this instanceof HasDevTools) {
+        ((HasDevTools) this).maybeGetDevTools().ifPresent(DevTools::close);
+      }
+
+      if (this instanceof HasBiDi) {
+        ((HasBiDi) this).maybeGetBiDi().ifPresent(BiDi::close);
+      }
+
       execute(DriverCommand.QUIT);
     } finally {
       sessionId = null;
@@ -476,7 +450,7 @@ public class RemoteWebDriver implements WebDriver,
       return new LinkedHashSet<>(returnedValues);
     } catch (ClassCastException ex) {
       throw new WebDriverException(
-        "Returned value cannot be converted to List<String>: " + value, ex);
+          "Returned value cannot be converted to List<String>: " + value, ex);
     }
   }
 
@@ -487,38 +461,98 @@ public class RemoteWebDriver implements WebDriver,
 
   @Override
   public Object executeScript(String script, Object... args) {
-    if (!isJavascriptEnabled()) {
-      throw new UnsupportedOperationException(
-          "You must be using an underlying instance of WebDriver that supports executing javascript");
-    }
-
-    // Escape the quote marks
-    script = script.replaceAll("\"", "\\\"");
-
-    List<Object> convertedArgs = Stream.of(args).map(new WebElementToJsonConverter()).collect(
-        Collectors.toList());
+    List<Object> convertedArgs =
+        Stream.of(args).map(new WebElementToJsonConverter()).collect(Collectors.toList());
 
     return execute(DriverCommand.EXECUTE_SCRIPT(script, convertedArgs)).getValue();
   }
 
   @Override
   public Object executeAsyncScript(String script, Object... args) {
-    if (!isJavascriptEnabled()) {
-      throw new UnsupportedOperationException("You must be using an underlying instance of " +
-          "WebDriver that supports executing javascript");
-    }
-
-    // Escape the quote marks
-    script = script.replaceAll("\"", "\\\"");
-
-    List<Object> convertedArgs = Stream.of(args).map(new WebElementToJsonConverter()).collect(
-        Collectors.toList());
+    List<Object> convertedArgs =
+        Stream.of(args).map(new WebElementToJsonConverter()).collect(Collectors.toList());
 
     return execute(DriverCommand.EXECUTE_ASYNC_SCRIPT(script, convertedArgs)).getValue();
   }
 
-  private boolean isJavascriptEnabled() {
-    return getCapabilities().is(SUPPORTS_JAVASCRIPT);
+  @Override
+  public ScriptKey pin(String script) {
+    UnpinnedScriptKey key = (UnpinnedScriptKey) JavascriptExecutor.super.pin(script);
+    String browserName = getCapabilities().getBrowserName().toLowerCase();
+    if ((browserName.equals("chrome")
+            || browserName.equals("msedge")
+            || browserName.equals("microsoftedge"))
+        && this instanceof HasDevTools) {
+
+      ((HasDevTools) this)
+          .maybeGetDevTools()
+          .ifPresent(
+              devTools -> {
+                devTools.createSessionIfThereIsNotOne();
+                devTools.send(
+                    new org.openqa.selenium.devtools.Command<>("Page.enable", ImmutableMap.of()));
+                devTools.send(
+                    new org.openqa.selenium.devtools.Command<>(
+                        "Runtime.evaluate", ImmutableMap.of("expression", key.creationScript())));
+                Map<String, Object> result =
+                    devTools.send(
+                        new org.openqa.selenium.devtools.Command<>(
+                            "Page.addScriptToEvaluateOnNewDocument",
+                            ImmutableMap.of("source", key.creationScript()),
+                            new TypeToken<Map<String, Object>>() {}.getType()));
+                key.setScriptId((String) result.get("identifier"));
+              });
+    }
+    return key;
+  }
+
+  @Override
+  public void unpin(ScriptKey scriptKey) {
+    UnpinnedScriptKey key = (UnpinnedScriptKey) scriptKey;
+
+    JavascriptExecutor.super.unpin(key);
+
+    String browserName = getCapabilities().getBrowserName().toLowerCase();
+    if ((browserName.equals("chrome")
+            || browserName.equals("msedge")
+            || browserName.equals("microsoftedge"))
+        && this instanceof HasDevTools) {
+      ((HasDevTools) this)
+          .maybeGetDevTools()
+          .ifPresent(
+              devTools -> {
+                devTools.send(
+                    new org.openqa.selenium.devtools.Command<>("Page.enable", ImmutableMap.of()));
+                devTools.send(
+                    new org.openqa.selenium.devtools.Command<>(
+                        "Runtime.evaluate", ImmutableMap.of("expression", key.removalScript())));
+                devTools.send(
+                    new org.openqa.selenium.devtools.Command<>(
+                        "Page.removeScriptToEvaluateOnLoad",
+                        ImmutableMap.of("identifier", key.getScriptId())));
+              });
+    }
+  }
+
+  @Override
+  public Object executeScript(ScriptKey key, Object... args) {
+    Require.stateCondition(
+        key instanceof UnpinnedScriptKey, "Script key should have been generated by this driver");
+
+    if (!getPinnedScripts().contains(key)) {
+      throw new JavascriptException("Script is unpinned");
+    }
+
+    String browserName = getCapabilities().getBrowserName().toLowerCase();
+
+    if ((browserName.equals("chrome")
+            || browserName.equals("msedge")
+            || browserName.equals("microsoftedge"))
+        && this instanceof HasDevTools) {
+      return executeScript(((UnpinnedScriptKey) key).executionScript(), args);
+    }
+
+    return executeScript(((UnpinnedScriptKey) key).getScript(), args);
   }
 
   @Override
@@ -551,7 +585,7 @@ public class RemoteWebDriver implements WebDriver,
    */
   public void setLogLevel(Level level) {
     this.level = level;
-    logger.setLevel(level);
+    LOG.setLevel(level);
   }
 
   protected Response execute(CommandPayload payload) {
@@ -560,8 +594,9 @@ public class RemoteWebDriver implements WebDriver,
 
     long start = System.currentTimeMillis();
     String currentName = Thread.currentThread().getName();
-    Thread.currentThread().setName(
-      String.format("Forwarding %s on session %s to remote", command.getName(), sessionId));
+    Thread.currentThread()
+        .setName(
+            String.format("Forwarding %s on session %s to remote", command.getName(), sessionId));
     try {
       log(sessionId, command.getName(), command, When.BEFORE);
       response = executor.execute(command);
@@ -576,23 +611,41 @@ public class RemoteWebDriver implements WebDriver,
       Object value = getElementConverter().apply(response.getValue());
       response.setValue(value);
     } catch (Throwable e) {
-      log(sessionId, command.getName(), command, When.EXCEPTION);
+      log(sessionId, command.getName(), e.getMessage(), When.EXCEPTION);
       WebDriverException toThrow;
       if (command.getName().equals(DriverCommand.NEW_SESSION)) {
         if (e instanceof SessionNotCreatedException) {
           toThrow = (WebDriverException) e;
         } else {
-          toThrow = new SessionNotCreatedException(
-            "Possible causes are invalid address of the remote server or browser start-up failure.", e);
+          toThrow =
+              new SessionNotCreatedException(
+                  "Possible causes are invalid address of the remote server or browser start-up"
+                      + " failure.",
+                  e);
         }
       } else if (e instanceof WebDriverException) {
         toThrow = (WebDriverException) e;
       } else {
-        toThrow = new UnreachableBrowserException(
-          "Error communicating with the remote browser. It may have died.", e);
+        toThrow =
+            new UnreachableBrowserException(
+                "Error communicating with the remote browser. It may have died.", e);
       }
       populateWebDriverException(toThrow);
-      toThrow.addInfo("Command", command.toString());
+      // Showing full command information when user is debugging
+      // Avoid leaking user/pwd values for authenticated Grids.
+      if (toThrow instanceof UnreachableBrowserException && !Debug.isDebugging()) {
+        toThrow.addInfo(
+            "Command",
+            "["
+                + command.getSessionId()
+                + ", "
+                + command.getName()
+                + " "
+                + command.getParameters().keySet()
+                + "]");
+      } else {
+        toThrow.addInfo("Command", command.toString());
+      }
       throw toThrow;
     } finally {
       Thread.currentThread().setName(currentName);
@@ -641,38 +694,51 @@ public class RemoteWebDriver implements WebDriver,
   }
 
   @Override
-  public Keyboard getKeyboard() {
-    return keyboard;
-  }
-
-  @Override
-  public Mouse getMouse() {
-    return mouse;
-  }
-
-  @Override
   public VirtualAuthenticator addVirtualAuthenticator(VirtualAuthenticatorOptions options) {
-    String authenticatorId = (String)
-        execute(DriverCommand.ADD_VIRTUAL_AUTHENTICATOR, options.toMap()).getValue();
+    String authenticatorId =
+        (String) execute(DriverCommand.ADD_VIRTUAL_AUTHENTICATOR, options.toMap()).getValue();
     return new RemoteVirtualAuthenticator(authenticatorId);
   }
 
   @Override
   public void removeVirtualAuthenticator(VirtualAuthenticator authenticator) {
-    execute(DriverCommand.REMOVE_VIRTUAL_AUTHENTICATOR,
+    execute(
+        DriverCommand.REMOVE_VIRTUAL_AUTHENTICATOR,
         ImmutableMap.of("authenticatorId", authenticator.getId()));
+  }
+
+  @Override
+  public void setDelayEnabled(boolean enabled) {
+    execute(DriverCommand.SET_DELAY_ENABLED(enabled));
+  }
+
+  @Override
+  public void resetCooldown() {
+    execute(DriverCommand.RESET_COOLDOWN);
+  }
+
+  @Override
+  public FederatedCredentialManagementDialog getFederatedCredentialManagementDialog() {
+    FederatedCredentialManagementDialog dialog = new FedCmDialogImpl(executeMethod);
+    try {
+      // As long as this does not throw, we're good.
+      dialog.getDialogType();
+      return dialog;
+    } catch (NoAlertPresentException e) {
+      return null;
+    }
   }
 
   /**
    * Override this to be notified at key points in the execution of a command.
    *
-   * @param sessionId   the session id.
+   * @param sessionId the session id.
    * @param commandName the command that is being executed.
-   * @param toLog       any data that might be interesting.
-   * @param when        verb tense of "Execute" to prefix message
+   * @param toLog any data that might be interesting.
+   * @param when verb tense of "Execute" to prefix message
    */
   protected void log(SessionId sessionId, String commandName, Object toLog, When when) {
-    if (!logger.isLoggable(level)) {
+    if (!LOG.isLoggable(level)) {
       return;
     }
     String text = String.valueOf(toLog);
@@ -684,7 +750,8 @@ public class RemoteWebDriver implements WebDriver,
     }
     // No need to log a screenshot response.
     if ((commandName.equals(DriverCommand.SCREENSHOT)
-         || commandName.equals(DriverCommand.ELEMENT_SCREENSHOT)) && toLog instanceof Response) {
+            || commandName.equals(DriverCommand.ELEMENT_SCREENSHOT))
+        && toLog instanceof Response) {
       Response responseToLog = (Response) toLog;
       Response copyToLog = new Response(new SessionId((responseToLog).getSessionId()));
       copyToLog.setValue("*Screenshot response suppressed*");
@@ -694,17 +761,54 @@ public class RemoteWebDriver implements WebDriver,
     }
     switch (when) {
       case BEFORE:
-        logger.log(level, "Executing: " + commandName + " " + text);
+        LOG.log(level, "Executing: {0} {1}", new Object[] {commandName, text});
         break;
       case AFTER:
-        logger.log(level, "Executed: " + text);
+        LOG.log(level, "Executed: {0} {1}", new Object[] {commandName, text});
         break;
       case EXCEPTION:
-        logger.log(level, "Exception: " + text);
+        LOG.log(level, "Exception: {0} {1}", new Object[] {commandName, text});
         break;
       default:
-        logger.log(level, text);
+        LOG.log(level, text);
         break;
+    }
+  }
+
+  private void checkNonW3CCapabilities(Capabilities capabilities) {
+    // Throwing warnings for non-W3C WebDriver compliant capabilities
+    List<String> invalid =
+        capabilities.asMap().keySet().stream()
+            .filter(key -> !(new AcceptedW3CCapabilityKeys().test(key)))
+            .collect(Collectors.toList());
+
+    if (!invalid.isEmpty()) {
+      LOG.log(
+          Level.WARNING,
+          () ->
+              String.format(
+                  "Support for Legacy Capabilities is deprecated; You are sending the following"
+                      + " invalid capabilities: %s; Please update to W3C Syntax:"
+                      + " https://www.selenium.dev/blog/2022/legacy-protocol-support/",
+                  invalid));
+    }
+  }
+
+  private void checkChromeW3CFalse(Capabilities capabilities) {
+    // Throwing warnings when the user sets `w3c: false` inside `goog:chromeOptions`
+    if (Browser.CHROME.is(capabilities) && capabilities.asMap().containsKey("goog:chromeOptions")) {
+      Object capability = capabilities.getCapability("goog:chromeOptions");
+      boolean w3c = true;
+      if ((capability instanceof Map)) {
+        Object rawW3C = ((Map<?, ?>) capability).get("w3c");
+        w3c = rawW3C == null || Boolean.parseBoolean(String.valueOf(rawW3C));
+      }
+      if (!w3c) {
+        throw new WebDriverException(
+            "Setting 'w3c: false' inside 'goog:chromeOptions' will no longer be supported Please"
+                + " update to W3C Syntax:"
+                + " https://www.selenium.dev/blog/2022/legacy-protocol-support/");
+      }
     }
   }
 
@@ -735,21 +839,14 @@ public class RemoteWebDriver implements WebDriver,
       return super.toString();
     }
 
-    // w3c name first
-    Object platform = caps.getCapability(PLATFORM_NAME);
-    if (!(platform instanceof String)) {
-      platform = caps.getCapability(PLATFORM);
-    }
-    if (platform == null) {
-      platform = "unknown";
+    Object platformName = caps.getCapability(PLATFORM_NAME);
+    if (platformName == null) {
+      platformName = "unknown";
     }
 
     return String.format(
-      "%s: %s on %s (%s)",
-      getClass().getSimpleName(),
-      caps.getBrowserName(),
-      platform,
-      getSessionId());
+        "%s: %s on %s (%s)",
+        getClass().getSimpleName(), caps.getBrowserName(), platformName, getSessionId());
   }
 
   public enum When {
@@ -798,25 +895,34 @@ public class RemoteWebDriver implements WebDriver,
         return toReturn;
       }
 
-      ((Collection<?>) returned).stream()
-          .map(o -> (Map<String, Object>) o)
-          .map(rawCookie -> {
-            // JSON object keys are defined in
-            // https://w3c.github.io/webdriver/#dfn-table-for-cookie-conversion.
-            Cookie.Builder builder =
-                new Cookie.Builder((String) rawCookie.get("name"), (String) rawCookie.get("value"))
-                    .path((String) rawCookie.get("path"))
-                    .domain((String) rawCookie.get("domain"))
-                    .isSecure(rawCookie.containsKey("secure") && (Boolean) rawCookie.get("secure"))
-                    .isHttpOnly(
-                        rawCookie.containsKey("httpOnly") && (Boolean) rawCookie.get("httpOnly"))
-                    .sameSite((String) rawCookie.get("sameSite"));
+      ((Collection<?>) returned)
+          .stream()
+              .map(o -> (Map<String, Object>) o)
+              .map(
+                  rawCookie -> {
+                    // JSON object keys are defined in
+                    // https://w3c.github.io/webdriver/#dfn-table-for-cookie-conversion.
+                    Cookie.Builder builder =
+                        new Cookie.Builder(
+                                (String) rawCookie.get("name"), (String) rawCookie.get("value"))
+                            .path((String) rawCookie.get("path"))
+                            .domain((String) rawCookie.get("domain"))
+                            .isSecure(
+                                rawCookie.containsKey("secure")
+                                    && (Boolean) rawCookie.get("secure"))
+                            .isHttpOnly(
+                                rawCookie.containsKey("httpOnly")
+                                    && (Boolean) rawCookie.get("httpOnly"))
+                            .sameSite((String) rawCookie.get("sameSite"));
 
-            Number expiryNum = (Number) rawCookie.get("expiry");
-            builder.expiresOn(expiryNum == null ? null : new Date(SECONDS.toMillis(expiryNum.longValue())));
-            return builder.build();
-          })
-          .forEach(toReturn::add);
+                    Number expiryNum = (Number) rawCookie.get("expiry");
+                    builder.expiresOn(
+                        expiryNum == null
+                            ? null
+                            : new Date(SECONDS.toMillis(expiryNum.longValue())));
+                    return builder.build();
+                  })
+              .forEach(toReturn::add);
 
       return toReturn;
     }
@@ -838,47 +944,10 @@ public class RemoteWebDriver implements WebDriver,
     }
 
     @Override
-    public ImeHandler ime() {
-      return new RemoteInputMethodManager();
-    }
-
-    @Override
     @Beta
     public Window window() {
       return new RemoteWindow();
     }
-
-    protected class RemoteInputMethodManager implements WebDriver.ImeHandler {
-
-      @Override
-      @SuppressWarnings("unchecked")
-      public List<String> getAvailableEngines() {
-        Response response = execute(DriverCommand.IME_GET_AVAILABLE_ENGINES);
-        return (List<String>) response.getValue();
-      }
-
-      @Override
-      public String getActiveEngine() {
-        Response response = execute(DriverCommand.IME_GET_ACTIVE_ENGINE);
-        return (String) response.getValue();
-      }
-
-      @Override
-      public boolean isActivated() {
-        Response response = execute(DriverCommand.IME_IS_ACTIVATED);
-        return (Boolean) response.getValue();
-      }
-
-      @Override
-      public void deactivate() {
-        execute(DriverCommand.IME_DEACTIVATE);
-      }
-
-      @Override
-      public void activateEngine(String engine) {
-        execute(DriverCommand.IME_ACTIVATE_ENGINE(engine));
-      }
-    } // RemoteInputMethodManager class
 
     protected class RemoteTimeouts implements Timeouts {
 
@@ -1043,12 +1112,14 @@ public class RemoteWebDriver implements WebDriver,
 
     @Override
     public WebDriver frame(String frameName) {
-      String name = frameName.replaceAll("(['\"\\\\#.:;,!?+<>=~*^$|%&@`{}\\-/\\[\\]\\(\\)])", "\\\\$1");
-      List<WebElement> frameElements = RemoteWebDriver.this.findElements(
-          By.cssSelector("frame[name='" + name + "'],iframe[name='" + name + "']"));
+      String name =
+          frameName.replaceAll("(['\"\\\\#.:;,!?+<>=~*^$|%&@`{}\\-/\\[\\]\\(\\)])", "\\\\$1");
+      List<WebElement> frameElements =
+          RemoteWebDriver.this.findElements(
+              By.cssSelector("frame[name='" + name + "'],iframe[name='" + name + "']"));
       if (frameElements.size() == 0) {
-        frameElements = RemoteWebDriver.this.findElements(
-            By.cssSelector("frame#" + name + ",iframe#" + name));
+        frameElements =
+            RemoteWebDriver.this.findElements(By.cssSelector("frame#" + name + ",iframe#" + name));
       }
       if (frameElements.size() == 0) {
         throw new NoSuchFrameException("No frame element found by name or id " + frameName);
@@ -1093,7 +1164,8 @@ public class RemoteWebDriver implements WebDriver,
       String original = getWindowHandle();
       try {
         Response response = execute(DriverCommand.SWITCH_TO_NEW_WINDOW(typeHint));
-        String newWindowHandle = ((Map<String, Object>) response.getValue()).get("handle").toString();
+        String newWindowHandle =
+            ((Map<String, Object>) response.getValue()).get("handle").toString();
         switchTo().window(newWindowHandle);
         return RemoteWebDriver.this;
       } catch (WebDriverException ex) {
@@ -1123,8 +1195,7 @@ public class RemoteWebDriver implements WebDriver,
 
   private class RemoteAlert implements Alert {
 
-    public RemoteAlert() {
-    }
+    public RemoteAlert() {}
 
     @Override
     public void dismiss() {
@@ -1143,7 +1214,6 @@ public class RemoteWebDriver implements WebDriver,
 
     /**
      * @param keysToSend character sequence to send to the alert
-     *
      * @throws IllegalArgumentException if keysToSend is null
      */
     @Override
@@ -1169,17 +1239,20 @@ public class RemoteWebDriver implements WebDriver,
 
     @Override
     public void addCredential(Credential credential) {
-      execute(DriverCommand.ADD_CREDENTIAL,
+      execute(
+          DriverCommand.ADD_CREDENTIAL,
           new ImmutableMap.Builder<String, Object>()
-            .putAll(credential.toMap())
-            .put("authenticatorId", id)
-            .build());
+              .putAll(credential.toMap())
+              .put("authenticatorId", id)
+              .build());
     }
 
     @Override
     public List<Credential> getCredentials() {
-      List<Map<String, Object>> response = (List<Map<String, Object>>)
-        execute(DriverCommand.GET_CREDENTIALS, ImmutableMap.of("authenticatorId", id)).getValue();
+      List<Map<String, Object>> response =
+          (List<Map<String, Object>>)
+              execute(DriverCommand.GET_CREDENTIALS, ImmutableMap.of("authenticatorId", id))
+                  .getValue();
       return response.stream().map(Credential::fromMap).collect(Collectors.toList());
     }
 
@@ -1190,7 +1263,8 @@ public class RemoteWebDriver implements WebDriver,
 
     @Override
     public void removeCredential(String credentialId) {
-      execute(DriverCommand.REMOVE_CREDENTIAL,
+      execute(
+          DriverCommand.REMOVE_CREDENTIAL,
           ImmutableMap.of("authenticatorId", id, "credentialId", credentialId));
     }
 
@@ -1201,7 +1275,8 @@ public class RemoteWebDriver implements WebDriver,
 
     @Override
     public void setUserVerified(boolean verified) {
-      execute(DriverCommand.SET_USER_VERIFIED,
+      execute(
+          DriverCommand.SET_USER_VERIFIED,
           ImmutableMap.of("authenticatorId", id, "isUserVerified", verified));
     }
   }

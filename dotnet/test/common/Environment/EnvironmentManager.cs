@@ -3,7 +3,6 @@ using System.Reflection;
 using System.IO;
 using Newtonsoft.Json;
 using NUnit.Framework;
-using System.Collections.Generic;
 
 namespace OpenQA.Selenium.Environment
 {
@@ -28,16 +27,16 @@ namespace OpenQA.Selenium.Environment
             string content = File.ReadAllText(configFile);
             TestEnvironment env = JsonConvert.DeserializeObject<TestEnvironment>(content);
 
-            string activeDriverConfig = TestContext.Parameters.Get("ActiveDriverConfig", env.ActiveDriverConfig);
+            string activeDriverConfig = System.Environment.GetEnvironmentVariable("ACTIVE_DRIVER_CONFIG") ?? TestContext.Parameters.Get("ActiveDriverConfig", env.ActiveDriverConfig);
             string activeWebsiteConfig = TestContext.Parameters.Get("ActiveWebsiteConfig", env.ActiveWebsiteConfig);
-            string driverServiceLocation = TestContext.Parameters.Get("DriverServiceLocation", env.DriverServiceLocation);
             DriverConfig driverConfig = env.DriverConfigs[activeDriverConfig];
             WebsiteConfig websiteConfig = env.WebSiteConfigs[activeWebsiteConfig];
             TestWebServerConfig webServerConfig = env.TestWebServerConfig;
             webServerConfig.CaptureConsoleOutput = TestContext.Parameters.Get<bool>("CaptureWebServerOutput", env.TestWebServerConfig.CaptureConsoleOutput);
             webServerConfig.HideCommandPromptWindow = TestContext.Parameters.Get<bool>("HideWebServerCommandPrompt", env.TestWebServerConfig.HideCommandPromptWindow);
             webServerConfig.JavaHomeDirectory = TestContext.Parameters.Get("WebServerJavaHome", env.TestWebServerConfig.JavaHomeDirectory);
-            this.driverFactory = new DriverFactory(driverServiceLocation);
+
+            this.driverFactory = new DriverFactory();
             this.driverFactory.DriverStarting += OnDriverStarting;
 
             Assembly driverAssembly = null;
@@ -139,10 +138,7 @@ namespace OpenQA.Selenium.Environment
             {
                 webServer.Stop();
             }
-            if (driver != null)
-            {
-                driver.Quit();
-            }
+            CloseCurrentDriver();
         }
 
         public event EventHandler<DriverStartingEventArgs> DriverStarting;
@@ -160,14 +156,9 @@ namespace OpenQA.Selenium.Environment
             }
         }
 
-        public Browser Browser 
+        public Browser Browser
         {
             get { return browser; }
-        }
-
-        public string DriverServiceDirectory
-        {
-            get { return this.driverFactory.DriverServicePath; }
         }
 
         public string CurrentDirectory
@@ -183,7 +174,7 @@ namespace OpenQA.Selenium.Environment
                 return testDirectory;
             }
         }
-        
+
         public TestWebServer WebServer
         {
             get { return webServer; }
@@ -210,12 +201,12 @@ namespace OpenQA.Selenium.Environment
         public IWebDriver GetCurrentDriver()
         {
             if (driver != null)
-            { 
-                return driver; 
+            {
+                return driver;
             }
-            else 
-            { 
-                return CreateFreshDriver(); 
+            else
+            {
+                return CreateFreshDriver();
             }
         }
 
@@ -238,9 +229,9 @@ namespace OpenQA.Selenium.Environment
 
         public void CloseCurrentDriver()
         {
-            if (driver != null) 
+            if (driver != null)
             {
-                driver.Quit(); 
+                driver.Quit();
             }
             driver = null;
         }

@@ -17,9 +17,11 @@
 
 package org.openqa.selenium.json;
 
-import org.openqa.selenium.Capabilities;
-import org.openqa.selenium.MutableCapabilities;
-import org.openqa.selenium.internal.Require;
+import static java.util.stream.Collector.Characteristics.CONCURRENT;
+import static java.util.stream.Collector.Characteristics.UNORDERED;
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toSet;
+import static org.openqa.selenium.json.Types.narrow;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -36,30 +38,40 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import org.openqa.selenium.Capabilities;
+import org.openqa.selenium.MutableCapabilities;
+import org.openqa.selenium.internal.Require;
 
-import static java.util.stream.Collector.Characteristics.CONCURRENT;
-import static java.util.stream.Collector.Characteristics.UNORDERED;
-import static java.util.stream.Collectors.collectingAndThen;
-import static java.util.stream.Collectors.toSet;
-import static org.openqa.selenium.json.Types.narrow;
-
+/** */
 class JsonTypeCoercer {
 
   private final Set<TypeCoercer<?>> additionalCoercers;
   private final Set<TypeCoercer<?>> coercers;
-  private final Map<Type, BiFunction<JsonInput, PropertySetting, Object>> knownCoercers = new ConcurrentHashMap<>();
+  private final Map<Type, BiFunction<JsonInput, PropertySetting, Object>> knownCoercers =
+      new ConcurrentHashMap<>();
 
+  /** */
   JsonTypeCoercer() {
     this(Stream.of());
   }
 
+  /**
+   * @param coercer
+   * @param coercers
+   */
   JsonTypeCoercer(JsonTypeCoercer coercer, Iterable<TypeCoercer<?>> coercers) {
     this(
-      Stream.concat(StreamSupport.stream(coercers.spliterator(), false), coercer.additionalCoercers.stream()));
+        Stream.concat(
+            StreamSupport.stream(coercers.spliterator(), false),
+            coercer.additionalCoercers.stream()));
   }
 
+  /**
+   * @param coercers
+   */
   private JsonTypeCoercer(Stream<TypeCoercer<?>> coercers) {
-    this.additionalCoercers = coercers.collect(collectingAndThen(toSet(), Collections::unmodifiableSet));
+    this.additionalCoercers =
+        coercers.collect(collectingAndThen(toSet(), Collections::unmodifiableSet));
 
     // Note: we call out when ordering matters.
     Set<TypeCoercer<?>> builder = new LinkedHashSet<>(additionalCoercers);
@@ -92,10 +104,15 @@ class JsonTypeCoercer {
     builder.add(new InstantCoercer());
 
     // From Selenium
-    builder.add(new MapCoercer<>(
-        Capabilities.class,
-        this,
-        Collector.of(MutableCapabilities::new, (caps, entry) -> caps.setCapability((String) entry.getKey(), entry.getValue()), MutableCapabilities::merge, UNORDERED)));
+    builder.add(
+        new MapCoercer<>(
+            Capabilities.class,
+            this,
+            Collector.of(
+                MutableCapabilities::new,
+                (caps, entry) -> caps.setCapability((String) entry.getKey(), entry.getValue()),
+                MutableCapabilities::merge,
+                UNORDERED)));
 
     // Container types
     //noinspection unchecked
@@ -105,10 +122,19 @@ class JsonTypeCoercer {
 
     builder.add(new StaticInitializerCoercer());
 
-    builder.add(new MapCoercer<>(
-        Map.class,
-        this,
-        Collector.of(LinkedHashMap::new, (map, entry) -> map.put(entry.getKey(), entry.getValue()), (l, r) -> { l.putAll(r); return l; }, UNORDERED, CONCURRENT)));
+    builder.add(
+        new MapCoercer<>(
+            Map.class,
+            this,
+            Collector.of(
+                LinkedHashMap::new,
+                (map, entry) -> map.put(entry.getKey(), entry.getValue()),
+                (l, r) -> {
+                  l.putAll(r);
+                  return l;
+                },
+                UNORDERED,
+                CONCURRENT)));
 
     // If the requested type is exactly "Object", do some guess work
     builder.add(new ObjectCoercer(this));
@@ -119,16 +145,30 @@ class JsonTypeCoercer {
     this.coercers = Collections.unmodifiableSet(builder);
   }
 
+  /**
+   * Deserialize the next JSON element as an object of the specified type.
+   *
+   * @param json serialized source as JSON string
+   * @param typeOfT data type for deserialization (class or {@link TypeToken})
+   * @param setter strategy used to assign values during deserialization
+   * @return object of the specified type deserialized from [source]
+   * @param <T> result type (as specified by [typeOfT])
+   */
   <T> T coerce(JsonInput json, Type typeOfT, PropertySetting setter) {
     BiFunction<JsonInput, PropertySetting, Object> coercer =
         knownCoercers.computeIfAbsent(typeOfT, this::buildCoercer);
 
     // We need to keep null checkers happy, apparently.
-    @SuppressWarnings("unchecked") T result = (T) Require.nonNull("Coercer", coercer).apply(json, setter);
+    @SuppressWarnings("unchecked")
+    T result = (T) Require.nonNull("Coercer", coercer).apply(json, setter);
 
     return result;
   }
 
+  /**
+   * @param type
+   * @return
+   */
   private BiFunction<JsonInput, PropertySetting, Object> buildCoercer(Type type) {
     return coercers.stream()
         .filter(coercer -> coercer.test(narrow(type)))

@@ -17,14 +17,28 @@
 
 package org.openqa.selenium.print;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.openqa.selenium.internal.Require;
 
 public class PrintOptions {
 
   public enum Orientation {
-    PORTRAIT,
-    LANDSCAPE
+    PORTRAIT("portrait"),
+    LANDSCAPE("landscape");
+
+    private final String serialFormat;
+
+    Orientation(String serialFormat) {
+      this.serialFormat = serialFormat;
+    }
+
+    @Override
+    public String toString() {
+      return serialFormat;
+    }
   }
+
   private Orientation orientation = Orientation.PORTRAIT;
   private double scale = 1.0;
   private boolean background = false;
@@ -45,9 +59,10 @@ public class PrintOptions {
     return this.pageRanges;
   }
 
-  public void setPageRanges(String firstRange, String ... ranges) {
+  public void setPageRanges(String firstRange, String... ranges) {
     Require.nonNull("pageRanges", firstRange);
-    this.pageRanges = new String[ranges.length + 1]; // Need to add all ranges and the initial range too.
+    this.pageRanges =
+        new String[ranges.length + 1]; // Need to add all ranges and the initial range too.
 
     this.pageRanges[0] = firstRange;
 
@@ -97,5 +112,21 @@ public class PrintOptions {
 
   public PageMargin getPageMargin() {
     return this.pageMargin;
+  }
+
+  public Map<String, Object> toMap() {
+    final Map<String, Object> options = new HashMap<>(7);
+    options.put("page", getPageSize());
+    options.put("orientation", getOrientation().toString());
+    options.put("scale", getScale());
+    options.put("shrinkToFit", getShrinkToFit());
+    options.put("background", getBackground());
+    final String[] effectivePageRanges = getPageRanges();
+    if (effectivePageRanges != null) {
+      options.put("pageRanges", effectivePageRanges);
+    }
+    options.put("margin", getPageMargin());
+
+    return options;
   }
 }

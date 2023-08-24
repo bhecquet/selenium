@@ -22,27 +22,17 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.openqa.selenium.By.id;
 import static org.openqa.selenium.testing.drivers.Browser.CHROME;
 import static org.openqa.selenium.testing.drivers.Browser.EDGE;
+import static org.openqa.selenium.testing.drivers.Browser.FIREFOX;
 import static org.openqa.selenium.testing.drivers.Browser.HTMLUNIT;
 import static org.openqa.selenium.testing.drivers.Browser.IE;
-import static org.openqa.selenium.testing.drivers.Browser.FIREFOX;
 import static org.openqa.selenium.testing.drivers.Browser.SAFARI;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.openqa.selenium.testing.Ignore;
-import org.openqa.selenium.build.InProject;
-import org.openqa.selenium.testing.JUnit4TestBase;
-import org.openqa.selenium.testing.NeedsFreshDriver;
-import org.openqa.selenium.testing.NotYetImplemented;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,10 +44,18 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.openqa.selenium.build.InProject;
+import org.openqa.selenium.testing.Ignore;
+import org.openqa.selenium.testing.JupiterTestBase;
+import org.openqa.selenium.testing.NeedsFreshDriver;
+import org.openqa.selenium.testing.NotYetImplemented;
 
-public class ExecutingJavascriptTest extends JUnit4TestBase {
+class ExecutingJavascriptTest extends JupiterTestBase {
 
-  @Before
+  @BeforeEach
   public void setUp() {
     assumeTrue(driver instanceof JavascriptExecutor);
   }
@@ -67,7 +65,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAString() {
+  void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAString() {
     driver.get(pages.xhtmlTestPage);
 
     Object result = executeScript("return document.title;");
@@ -76,7 +74,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToExecuteSimpleJavascriptAndReturnALong() {
+  void testShouldBeAbleToExecuteSimpleJavascriptAndReturnALong() {
     driver.get(pages.nestedPage);
 
     Object result = executeScript("return document.getElementsByName('checky').length;");
@@ -86,7 +84,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAWebElement() {
+  void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAWebElement() {
     driver.get(pages.xhtmlTestPage);
 
     Object result = executeScript("return document.getElementById('id1');");
@@ -96,7 +94,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToExecuteSimpleJavascriptAndReturnABoolean() {
+  void testShouldBeAbleToExecuteSimpleJavascriptAndReturnABoolean() {
     driver.get(pages.xhtmlTestPage);
 
     Object result = executeScript("return true;");
@@ -107,11 +105,10 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
 
   @SuppressWarnings("unchecked")
   @Test
-  public void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAStringsArray() {
+  void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAStringsArray() {
     driver.get(pages.javascriptPage);
 
-    Object result = ((JavascriptExecutor) driver).executeScript(
-        "return ['zero', 'one', 'two'];");
+    Object result = ((JavascriptExecutor) driver).executeScript("return ['zero', 'one', 'two'];");
 
     assertThat(result).isInstanceOf(List.class);
     assertThat((List<?>) result).isEqualTo(ImmutableList.of("zero", "one", "two"));
@@ -119,7 +116,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
 
   @SuppressWarnings("unchecked")
   @Test
-  public void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAnArray() {
+  void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAnArray() {
     driver.get(pages.javascriptPage);
     List<Object> expectedResult = new ArrayList<>();
     expectedResult.add("zero");
@@ -132,44 +129,44 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
     assertThat((List<Object>) result).isEqualTo(expectedResult);
   }
 
-
   @SuppressWarnings("unchecked")
   @Test
-  public void testShouldBeAbleToExecuteJavascriptAndReturnABasicObjectLiteral() {
+  void testShouldBeAbleToExecuteJavascriptAndReturnABasicObjectLiteral() {
     driver.get(pages.javascriptPage);
 
     Object result = executeScript("return {abc: '123', tired: false};");
     assertThat(result).isInstanceOf(Map.class);
     Map<String, Object> map = (Map<String, Object>) result;
 
-    Map<String, Object> expected = ImmutableMap.of(
-      "abc", "123",
-      "tired", false);
+    Map<String, Object> expected = ImmutableMap.of("abc", "123", "tired", false);
 
     // Cannot do an exact match; Firefox 4 inserts a few extra keys in our object; this is OK, as
     // long as the expected keys are there.
     assertThat(map.size()).isGreaterThanOrEqualTo(expected.size());
     for (Map.Entry<String, Object> entry : expected.entrySet()) {
-      assertThat(map.get(entry.getKey())).as("Value by key %s, )", entry.getKey()).isEqualTo(entry.getValue());
+      assertThat(map.get(entry.getKey()))
+          .as("Value by key %s, )", entry.getKey())
+          .isEqualTo(entry.getValue());
     }
   }
 
   @SuppressWarnings("unchecked")
   @Test
-  public void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAnObjectLiteral() {
+  void testShouldBeAbleToExecuteSimpleJavascriptAndReturnAnObjectLiteral() {
     driver.get(pages.javascriptPage);
 
-    Map<String, Object> expectedResult = ImmutableMap.of(
-        "foo", "bar",
-        "baz", Arrays.asList("a", "b", "c"),
-        "person", ImmutableMap.of(
-            "first", "John",
-            "last", "Doe")
-    );
+    Map<String, Object> expectedResult =
+        ImmutableMap.of(
+            "foo", "bar",
+            "baz", Arrays.asList("a", "b", "c"),
+            "person",
+                ImmutableMap.of(
+                    "first", "John",
+                    "last", "Doe"));
 
-    Object result = executeScript(
-        "return {foo:'bar', baz: ['a', 'b', 'c'], " +
-        "person: {first: 'John',last: 'Doe'}};");
+    Object result =
+        executeScript(
+            "return {foo:'bar', baz: ['a', 'b', 'c'], " + "person: {first: 'John',last: 'Doe'}};");
     assertThat(result).isInstanceOf(Map.class);
 
     Map<String, Object> map = (Map<String, Object>) result;
@@ -216,7 +213,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testPassingAndReturningALongShouldReturnAWholeNumber() {
+  void testPassingAndReturningALongShouldReturnAWholeNumber() {
     driver.get(pages.javascriptPage);
     Long expectedResult = 1L;
     Object result = executeScript("return arguments[0];", expectedResult);
@@ -224,7 +221,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testReturningOverflownLongShouldReturnADouble() {
+  void testReturningOverflownLongShouldReturnADouble() {
     driver.get(pages.javascriptPage);
     Double expectedResult = 6.02214129e+23;
     Object result = executeScript("return arguments[0];", expectedResult);
@@ -232,7 +229,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testPassingAndReturningADoubleShouldReturnADecimal() {
+  void testPassingAndReturningADoubleShouldReturnADecimal() {
     driver.get(pages.javascriptPage);
     Double expectedResult = 1.2;
     Object result = executeScript("return arguments[0];", expectedResult);
@@ -240,7 +237,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldThrowAnExceptionWhenTheJavascriptIsBad() {
+  void testShouldThrowAnExceptionWhenTheJavascriptIsBad() {
     driver.get(pages.xhtmlTestPage);
 
     assertThatExceptionOfType(WebDriverException.class)
@@ -258,23 +255,25 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   public void testShouldThrowAnExceptionWithMessageAndStacktraceWhenTheJavascriptIsBad() {
     driver.get(pages.xhtmlTestPage);
 
-    String js = "function functionB() { throw Error('errormessage'); };"
-                + "function functionA() { functionB(); };"
-                + "functionA();";
+    String js =
+        "function functionB() { throw Error('errormessage'); };"
+            + "function functionA() { functionB(); };"
+            + "functionA();";
     assertThatExceptionOfType(WebDriverException.class)
         .isThrownBy(() -> executeScript(js))
         .withMessageContaining("errormessage")
-        .satisfies(t -> {
-          Throwable rootCause = getRootCause(t);
-          assertThat(rootCause).hasMessageContaining("errormessage");
-          assertThat(Arrays.asList(rootCause.getStackTrace()))
-              .extracting(StackTraceElement::getMethodName)
-              .contains("functionB");
-        });
+        .satisfies(
+            t -> {
+              Throwable rootCause = getRootCause(t);
+              assertThat(rootCause).hasMessageContaining("errormessage");
+              assertThat(Arrays.asList(rootCause.getStackTrace()))
+                  .extracting(StackTraceElement::getMethodName)
+                  .contains("functionB");
+            });
   }
 
   @Test
-  public void testShouldBeAbleToCallFunctionsDefinedOnThePage() {
+  void testShouldBeAbleToCallFunctionsDefinedOnThePage() {
     driver.get(pages.javascriptPage);
     executeScript("displayMessage('I like cheese');");
     String text = driver.findElement(By.id("result")).getText();
@@ -283,7 +282,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToPassAStringAnAsArgument() {
+  void testShouldBeAbleToPassAStringAnAsArgument() {
     driver.get(pages.javascriptPage);
     String value =
         (String) executeScript("return arguments[0] == 'fish' ? 'fish' : 'not fish';", "fish");
@@ -292,49 +291,51 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToPassABooleanAsArgument() {
+  void testShouldBeAbleToPassABooleanAsArgument() {
     driver.get(pages.javascriptPage);
     boolean value = (Boolean) executeScript("return arguments[0] == true;", true);
     assertThat(value).isTrue();
   }
 
   @Test
-  public void testShouldBeAbleToPassANumberAnAsArgument() {
+  void testShouldBeAbleToPassANumberAnAsArgument() {
     driver.get(pages.javascriptPage);
     boolean value = (Boolean) executeScript("return arguments[0] == 1 ? true : false;", 1);
     assertThat(value).isTrue();
   }
 
   @Test
-  public void testShouldBeAbleToPassAWebElementAsArgument() {
+  void testShouldBeAbleToPassAWebElementAsArgument() {
     driver.get(pages.javascriptPage);
     WebElement button = driver.findElement(By.id("plainButton"));
     String value =
-        (String) executeScript(
-            "arguments[0]['flibble'] = arguments[0].getAttribute('id'); return arguments[0]['flibble'];",
-            button);
+        (String)
+            executeScript(
+                "arguments[0]['flibble'] = arguments[0].getAttribute('id'); return"
+                    + " arguments[0]['flibble'];",
+                button);
 
     assertThat(value).isEqualTo("plainButton");
   }
 
   @Test
-  public void testPassingArrayAsOnlyArgumentFlattensArray() {
+  void testPassingArrayAsOnlyArgumentFlattensArray() {
     driver.get(pages.javascriptPage);
-    Object[] array = new Object[]{"zero", 1, true, 42.4242, false};
+    Object[] array = new Object[] {"zero", 1, true, 42.4242, false};
     String value = (String) executeScript("return arguments[0]", array);
     assertThat(value).isEqualTo(array[0]);
   }
 
   @Test
-  public void testShouldBeAbleToPassAnArrayAsAdditionalArgument() {
+  void testShouldBeAbleToPassAnArrayAsAdditionalArgument() {
     driver.get(pages.javascriptPage);
-    Object[] array = new Object[]{"zero", 1, true, 42.4242, false};
+    Object[] array = new Object[] {"zero", 1, true, 42.4242, false};
     long length = (Long) executeScript("return arguments[1].length", "string", array);
     assertThat(length).isEqualTo(array.length);
   }
 
   @Test
-  public void testShouldBeAbleToPassACollectionAsArgument() {
+  void testShouldBeAbleToPassACollectionAsArgument() {
     driver.get(pages.javascriptPage);
     Collection<Object> collection = new ArrayList<>();
     collection.add("Cheddar");
@@ -353,21 +354,21 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldThrowAnExceptionIfAnArgumentIsNotValid() {
+  void testShouldThrowAnExceptionIfAnArgumentIsNotValid() {
     driver.get(pages.javascriptPage);
     assertThatExceptionOfType(IllegalArgumentException.class)
         .isThrownBy(() -> executeScript("return arguments[0];", driver));
   }
 
   @Test
-  public void testShouldBeAbleToPassInMoreThanOneArgument() {
+  void testShouldBeAbleToPassInMoreThanOneArgument() {
     driver.get(pages.javascriptPage);
     String result = (String) executeScript("return arguments[0] + arguments[1];", "one", "two");
     assertThat(result).isEqualTo("onetwo");
   }
 
   @Test
-  public void testShouldBeAbleToGrabTheBodyOfFrameOnceSwitchedTo() {
+  void testShouldBeAbleToGrabTheBodyOfFrameOnceSwitchedTo() {
     driver.get(pages.richTextPage);
 
     driver.switchTo().frame("editFrame");
@@ -375,26 +376,26 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
     String text = body.getText();
     driver.switchTo().defaultContent();
 
-    assertThat(text).isEqualTo("");
+    assertThat(text).isEmpty();
   }
 
   @SuppressWarnings("unchecked")
   @Test
-  public void testShouldBeAbleToReturnAnArrayOfWebElements() {
+  void testShouldBeAbleToReturnAnArrayOfWebElements() {
     driver.get(pages.formPage);
 
-    List<WebElement> items = (List<WebElement>) executeScript(
-        "return document.getElementsByName('snack');");
+    List<WebElement> items =
+        (List<WebElement>) executeScript("return document.getElementsByName('snack');");
 
     assertThat(items).isNotEmpty();
   }
 
   @Test
-  public void testJavascriptStringHandlingShouldWorkAsExpected() {
+  void testJavascriptStringHandlingShouldWorkAsExpected() {
     driver.get(pages.javascriptPage);
 
     String value = (String) executeScript("return '';");
-    assertThat(value).isEqualTo("");
+    assertThat(value).isEmpty();
 
     value = (String) executeScript("return undefined;");
     assertThat(value).isNull();
@@ -404,7 +405,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToExecuteABigChunkOfJavascriptCode() throws IOException {
+  void testShouldBeAbleToExecuteABigChunkOfJavascriptCode() throws IOException {
     driver.get(pages.javascriptPage);
 
     Path jqueryFile = InProject.locate("common/src/web/js/jquery-3.5.1.min.js");
@@ -418,7 +419,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
 
   @SuppressWarnings("unchecked")
   @Test
-  public void testShouldBeAbleToExecuteScriptAndReturnElementsList() {
+  void testShouldBeAbleToExecuteScriptAndReturnElementsList() {
     driver.get(pages.formPage);
     String scriptToExec = "return document.getElementsByName('snack');";
 
@@ -429,7 +430,8 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
 
   @NeedsFreshDriver
   @Test
-  @NotYetImplemented(value = HTMLUNIT,
+  @NotYetImplemented(
+      value = HTMLUNIT,
       reason = "HtmlUnit: can't execute JavaScript before a page is loaded")
   @Ignore(SAFARI)
   public void testShouldBeAbleToExecuteScriptOnNoPage() {
@@ -438,7 +440,7 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testShouldBeAbleToCreateAPersistentValue() {
+  void testShouldBeAbleToCreateAPersistentValue() {
     driver.get(pages.formPage);
 
     executeScript("document.alerts = []");
@@ -449,20 +451,21 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testCanHandleAnArrayOfElementsAsAnObjectArray() {
+  void testCanHandleAnArrayOfElementsAsAnObjectArray() {
     driver.get(pages.formPage);
 
     List<WebElement> forms = driver.findElements(By.tagName("form"));
-    Object[] args = new Object[]{forms};
+    Object[] args = new Object[] {forms};
 
-    String name = (String) ((JavascriptExecutor) driver).executeScript(
-        "return arguments[0][0].tagName", args);
+    String name =
+        (String)
+            ((JavascriptExecutor) driver).executeScript("return arguments[0][0].tagName", args);
 
     assertThat(name).isEqualToIgnoringCase("form");
   }
 
   @Test
-  public void testCanPassAMapAsAParameter() {
+  void testCanPassAMapAsAParameter() {
     driver.get(pages.simpleTestPage);
 
     List<Integer> nums = Arrays.asList(1, 2);
@@ -482,8 +485,9 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
 
     driver.get(pages.simpleTestPage);
 
-    Map<String, Object> args = ImmutableMap.of(
-        "key", Arrays.asList("a", new Object[]{"zero", 1, true, 42.4242, false, el}, "c"));
+    Map<String, Object> args =
+        ImmutableMap.of(
+            "key", Arrays.asList("a", new Object[] {"zero", 1, true, 42.4242, false, el}, "c"));
 
     assertThatExceptionOfType(StaleElementReferenceException.class)
         .isThrownBy(() -> executeScript("return undefined;", args));
@@ -491,24 +495,24 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
 
   @Test
   @Ignore(IE)
-  public void testShouldBeAbleToReturnADateObject() {
+  @Ignore(value = CHROME, reason = "https://bugs.chromium.org/p/chromedriver/issues/detail?id=4395")
+  public void testShouldBeAbleToReturnADateObject() throws ParseException {
     driver.get(pages.simpleTestPage);
 
     String date = (String) executeScript("return new Date();");
 
-    try {
-      new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").parse(date);
-    } catch (ParseException e) {
-      fail();
-    }
+    new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").parse(date);
   }
 
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(10)
   @NotYetImplemented(CHROME)
   @NotYetImplemented(EDGE)
   @Ignore(IE)
   @NotYetImplemented(SAFARI)
-  @NotYetImplemented(value = FIREFOX, reason = "https://bugzilla.mozilla.org/show_bug.cgi?id=1502656")
+  @NotYetImplemented(
+      value = FIREFOX,
+      reason = "https://bugzilla.mozilla.org/show_bug.cgi?id=1502656")
   public void shouldReturnDocumentElementIfDocumentIsReturned() {
     driver.get(pages.simpleTestPage);
 
@@ -518,7 +522,8 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
     assertThat(((WebElement) value).getText()).contains("A single line of text");
   }
 
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(10)
   @Ignore(value = IE, reason = "returns WebElement")
   @Ignore(HTMLUNIT)
   public void shouldHandleObjectThatThatHaveToJSONMethod() {
@@ -529,27 +534,30 @@ public class ExecutingJavascriptTest extends JUnit4TestBase {
     assertThat(value).isInstanceOf(Map.class);
   }
 
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(10)
   @Ignore(HTMLUNIT)
   public void shouldHandleRecursiveStructures() {
     driver.get(pages.simpleTestPage);
 
-    assertThatExceptionOfType(JavascriptException.class).isThrownBy(() -> executeScript(
-        "var obj1 = {}; var obj2 = {}; obj1['obj2'] = obj2; obj2['obj1'] = obj1; return obj1"));
+    assertThatExceptionOfType(JavascriptException.class)
+        .isThrownBy(
+            () ->
+                executeScript(
+                    "var obj1 = {}; var obj2 = {}; obj1['obj2'] = obj2; obj2['obj1'] = obj1; return"
+                        + " obj1"));
   }
 
   @Test
-  public void shouldUnwrapDeeplyNestedWebElementsAsArguments() {
+  void shouldUnwrapDeeplyNestedWebElementsAsArguments() {
     driver.get(pages.simpleTestPage);
 
     WebElement expected = driver.findElement(id("oneline"));
 
-    Object args = ImmutableMap.of(
-        "top", ImmutableMap.of(
-            "key", singletonList(ImmutableMap.of(
-                "subkey", expected))));
-    WebElement seen = (WebElement) executeScript(
-        "return arguments[0].top.key[0].subkey", args);
+    Object args =
+        ImmutableMap.of(
+            "top", ImmutableMap.of("key", singletonList(ImmutableMap.of("subkey", expected))));
+    WebElement seen = (WebElement) executeScript("return arguments[0].top.key[0].subkey", args);
 
     assertThat(seen).isEqualTo(expected);
   }

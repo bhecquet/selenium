@@ -17,10 +17,23 @@
 
 package org.openqa.selenium.grid.gridui;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openqa.selenium.grid.gridui.Urls.whereIs;
+import static org.openqa.selenium.json.Json.MAP_TYPE;
+import static org.openqa.selenium.remote.http.HttpMethod.GET;
+import static org.openqa.selenium.support.ui.ExpectedConditions.textToBe;
+import static org.openqa.selenium.support.ui.ExpectedConditions.visibilityOfAllElementsLocatedBy;
+import static org.openqa.selenium.support.ui.ExpectedConditions.visibilityOfElementLocated;
+import static org.openqa.selenium.testing.Safely.safelyCall;
+
 import com.google.common.collect.ImmutableMap;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -41,28 +54,14 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.testing.drivers.Browser;
 import org.openqa.selenium.testing.drivers.WebDriverBuilder;
 
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import static junit.framework.TestCase.assertEquals;
-import static org.openqa.selenium.grid.gridui.Urls.whereIs;
-import static org.openqa.selenium.json.Json.MAP_TYPE;
-import static org.openqa.selenium.remote.http.HttpMethod.GET;
-import static org.openqa.selenium.support.ui.ExpectedConditions.textToBe;
-import static org.openqa.selenium.support.ui.ExpectedConditions.visibilityOfAllElementsLocatedBy;
-import static org.openqa.selenium.support.ui.ExpectedConditions.visibilityOfElementLocated;
-import static org.openqa.selenium.testing.Safely.safelyCall;
-
-public class OverallGridTest {
+class OverallGridTest {
 
   private Server<?> server;
   private WebDriver driver;
   private WebDriver remoteWebDriver;
   private Wait<WebDriver> wait;
 
-  @Before
+  @BeforeEach
   public void setup() {
     server = createStandalone();
 
@@ -71,7 +70,7 @@ public class OverallGridTest {
     wait = new WebDriverWait(driver, Duration.ofSeconds(10));
   }
 
-  @After
+  @AfterEach
   public void tearDown() {
     safelyCall(() -> driver.quit());
     safelyCall(() -> remoteWebDriver.quit());
@@ -79,29 +78,31 @@ public class OverallGridTest {
   }
 
   @Test
-  public void shouldReportConcurrencyZeroPercentWhenGridIsStartedWithoutLoad() {
-    driver.get(whereIs(server, "/ui/index.html#/sessions"));
+  void shouldReportConcurrencyZeroPercentWhenGridIsStartedWithoutLoad() {
+    driver.get(whereIs(server, "/ui#/sessions"));
 
-    WebElement concurrency = wait
-      .until(visibilityOfElementLocated(By.cssSelector("div[data-testid='concurrency-usage']")));
+    WebElement concurrency =
+        wait.until(
+            visibilityOfElementLocated(By.cssSelector("div[data-testid='concurrency-usage']")));
 
     assertEquals("0%", concurrency.getText());
   }
 
   @Test
-  public void shouldShowOneNodeRegistered() {
-    driver.get(whereIs(server, "/ui/index.html#"));
+  void shouldShowOneNodeRegistered() {
+    driver.get(whereIs(server, "/ui"));
 
-    List<WebElement> nodeInfoIcons = wait
-      .until(visibilityOfAllElementsLocatedBy(By.cssSelector("button[data-testid*='node-info-']")));
+    List<WebElement> nodeInfoIcons =
+        wait.until(
+            visibilityOfAllElementsLocatedBy(By.cssSelector("button[data-testid*='node-info-']")));
 
     assertEquals(1, nodeInfoIcons.size());
   }
 
   @Test
-  public void shouldIncrementSessionCountWhenSessionStarts() {
+  void shouldIncrementSessionCountWhenSessionStarts() {
     remoteWebDriver = new RemoteWebDriver(server.getUrl(), Browser.detect().getCapabilities());
-    driver.get(whereIs(server, "/ui/index.html#/sessions"));
+    driver.get(whereIs(server, "/ui#/sessions"));
 
     wait.until(textToBe(By.cssSelector("div[data-testid='session-count']"), "1"));
   }
@@ -109,10 +110,12 @@ public class OverallGridTest {
   private Server<?> createStandalone() {
     int port = PortProber.findFreePort();
 
-    Config config = new MemoizedConfig(
-      new MapConfig(ImmutableMap.of(
-        "server", Collections.singletonMap("port", port),
-        "node", Collections.singletonMap("detect-drivers", true))));
+    Config config =
+        new MemoizedConfig(
+            new MapConfig(
+                ImmutableMap.of(
+                    "server", Collections.singletonMap("port", port),
+                    "node", ImmutableMap.of("detect-drivers", true, "selenium-manager", true))));
 
     Server<?> server = new Standalone().asServer(config).start();
 
@@ -133,5 +136,4 @@ public class OverallGridTest {
               });
     }
   }
-
 }

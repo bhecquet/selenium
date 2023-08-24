@@ -17,18 +17,18 @@
 
 package org.openqa.selenium.safari;
 
+import static org.openqa.selenium.remote.Browser.SAFARI;
+import static org.openqa.selenium.remote.CapabilityType.BROWSER_NAME;
+
 import com.google.auto.service.AutoService;
+import java.util.Optional;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.SessionNotCreatedException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebDriverInfo;
-
-import java.util.Optional;
-
-import static org.openqa.selenium.remote.Browser.SAFARI;
-import static org.openqa.selenium.remote.CapabilityType.BROWSER_NAME;
+import org.openqa.selenium.remote.service.DriverFinder;
 
 @AutoService(WebDriverInfo.class)
 public class SafariDriverInfo implements WebDriverInfo {
@@ -49,10 +49,7 @@ public class SafariDriverInfo implements WebDriverInfo {
       return true;
     }
 
-    return capabilities.asMap().keySet().parallelStream()
-      .map(key -> key.startsWith("safari.") || key.startsWith("safari:"))
-      .reduce(Boolean::logicalOr)
-      .orElse(false);
+    return capabilities.asMap().keySet().stream().anyMatch(key -> key.startsWith("safari:"));
   }
 
   @Override
@@ -61,9 +58,25 @@ public class SafariDriverInfo implements WebDriverInfo {
   }
 
   @Override
+  public boolean isSupportingBiDi() {
+    return false;
+  }
+
+  @Override
   public boolean isAvailable() {
     try {
-      SafariDriverService.createDefaultService();
+      DriverFinder.getPath(SafariDriverService.createDefaultService(), getCanonicalCapabilities());
+      return true;
+    } catch (IllegalStateException | WebDriverException e) {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean isPresent() {
+    try {
+      DriverFinder.getPath(
+          SafariDriverService.createDefaultService(), getCanonicalCapabilities(), true);
       return true;
     } catch (IllegalStateException | WebDriverException e) {
       return false;
@@ -82,6 +95,6 @@ public class SafariDriverInfo implements WebDriverInfo {
       return Optional.empty();
     }
 
-    return Optional.of(new SafariDriver(capabilities));
+    return Optional.of(new SafariDriver(new SafariOptions().merge(capabilities)));
   }
 }

@@ -13,11 +13,12 @@
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
-# under the License
+# under the License.
 
-from selenium.webdriver.common.by import By
 
 import pytest
+
+from selenium.webdriver.common.by import By
 
 
 @pytest.mark.xfail_firefox
@@ -32,7 +33,7 @@ def test_should_return_explicitly_specified_role(driver):
 @pytest.mark.xfail_firefox
 @pytest.mark.xfail_safari
 @pytest.mark.xfail_remote
-def test_shouldReturnImplicitRoleDefinedByTagName(driver):
+def test_should_return_implicit_role_defined_by_tag_name(driver):
     driver.get("data:text/html,<h1>Level 1 Header</h1>")
     header1 = driver.find_element(By.CSS_SELECTOR, "h1")
     assert header1.aria_role == "heading"

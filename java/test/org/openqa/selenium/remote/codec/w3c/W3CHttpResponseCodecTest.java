@@ -27,9 +27,11 @@ import static org.openqa.selenium.remote.ErrorCodes.METHOD_NOT_ALLOWED;
 import static org.openqa.selenium.remote.http.Contents.bytes;
 
 import com.google.common.collect.ImmutableMap;
-
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.UnhandledAlertException;
 import org.openqa.selenium.UnsupportedCommandException;
 import org.openqa.selenium.WebDriverException;
@@ -37,17 +39,12 @@ import org.openqa.selenium.json.Json;
 import org.openqa.selenium.remote.ErrorCodes;
 import org.openqa.selenium.remote.Response;
 import org.openqa.selenium.remote.http.HttpResponse;
-import org.openqa.selenium.testing.UnitTests;
 
-import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
-
-@Category(UnitTests.class)
-public class W3CHttpResponseCodecTest {
+@Tag("UnitTests")
+class W3CHttpResponseCodecTest {
 
   @Test
-  public void noErrorNoCry() {
+  void noErrorNoCry() {
     Map<String, Object> data = new HashMap<>();
     data.put("value", "cheese");
 
@@ -61,13 +58,14 @@ public class W3CHttpResponseCodecTest {
   }
 
   @Test
-  public void shouldBeAbleToHandleGatewayTimeoutError() {
-    String responseString = "<html>\r\n" +
-      "<body>\r\n" +
-      "<h1>504 Gateway Time-out</h1>\r\n" +
-      "The server didn't respond in time.\r\n" +
-      "</body>\r\n" +
-      "</html>";
+  void shouldBeAbleToHandleGatewayTimeoutError() {
+    String responseString =
+        "<html>\r\n"
+            + "<body>\r\n"
+            + "<h1>504 Gateway Time-out</h1>\r\n"
+            + "The server didn't respond in time.\r\n"
+            + "</body>\r\n"
+            + "</html>";
 
     byte[] contents = responseString.getBytes(UTF_8);
 
@@ -84,16 +82,16 @@ public class W3CHttpResponseCodecTest {
     assertThat(decoded.getValue()).isEqualTo(responseString);
   }
 
-
   @Test
-  public void shouldBeAbleToHandleBadGatewayError() {
-    String responseString = "<html>\r\n" +
-      "<head><title>502 Bad Gateway</title></head>\r\n" +
-      "<body>\r\n" +
-      "<center><h1>502 Bad Gateway</h1></center>\r\n" +
-      "<hr><center>nginx</center>\r\n" +
-      "</body>\r\n" +
-      "</html>";
+  void shouldBeAbleToHandleBadGatewayError() {
+    String responseString =
+        "<html>\r\n"
+            + "<head><title>502 Bad Gateway</title></head>\r\n"
+            + "<body>\r\n"
+            + "<center><h1>502 Bad Gateway</h1></center>\r\n"
+            + "<hr><center>nginx</center>\r\n"
+            + "</body>\r\n"
+            + "</html>";
 
     byte[] contents = responseString.getBytes(UTF_8);
 
@@ -111,9 +109,9 @@ public class W3CHttpResponseCodecTest {
   }
 
   @Test
-  public void decodingAnErrorWithoutAStacktraceIsDecodedProperlyForNonCompliantImplementations() {
+  void decodingAnErrorWithoutAStacktraceIsDecodedProperlyForNonCompliantImplementations() {
     Map<String, Object> error = new HashMap<>();
-    error.put("error", "unsupported operation");  // 500
+    error.put("error", "unsupported operation"); // 500
     error.put("message", "I like peas");
     error.put("stacktrace", "");
 
@@ -129,9 +127,9 @@ public class W3CHttpResponseCodecTest {
   }
 
   @Test
-  public void decodingAnErrorWithoutAStacktraceIsDecodedProperlyForConformingImplementations() {
+  void decodingAnErrorWithoutAStacktraceIsDecodedProperlyForConformingImplementations() {
     Map<String, Object> error = new HashMap<>();
-    error.put("error", "unsupported operation");  // 500
+    error.put("error", "unsupported operation"); // 500
     error.put("message", "I like peas");
     error.put("stacktrace", "");
     Map<String, Object> data = new HashMap<>();
@@ -149,13 +147,15 @@ public class W3CHttpResponseCodecTest {
   }
 
   @Test
-  public void shouldPopulateTheAlertTextIfThrowingAnUnhandledAlertException() {
-    Map<String, Map<String, Serializable>> data = ImmutableMap.of(
-        "value", ImmutableMap.of(
-            "error", "unexpected alert open",
-            "message", "Modal dialog present",
-            "stacktrace", "",
-            "data", ImmutableMap.of("text", "cheese")));
+  void shouldPopulateTheAlertTextIfThrowingAnUnhandledAlertException() {
+    Map<String, Map<String, Serializable>> data =
+        ImmutableMap.of(
+            "value",
+            ImmutableMap.of(
+                "error", "unexpected alert open",
+                "message", "Modal dialog present",
+                "stacktrace", "",
+                "data", ImmutableMap.of("text", "cheese")));
 
     HttpResponse response = createValidResponse(500, data);
     Response decoded = new W3CHttpResponseCodec().decode(response);

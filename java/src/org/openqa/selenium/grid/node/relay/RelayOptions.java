@@ -23,26 +23,24 @@ import static org.openqa.selenium.remote.http.HttpMethod.GET;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
-
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.logging.Logger;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.grid.config.Config;
 import org.openqa.selenium.grid.config.ConfigException;
 import org.openqa.selenium.grid.node.SessionFactory;
 import org.openqa.selenium.internal.Require;
 import org.openqa.selenium.json.Json;
-import org.openqa.selenium.remote.http.ClientConfig;
 import org.openqa.selenium.remote.http.HttpClient;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
 import org.openqa.selenium.remote.tracing.Tracer;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.logging.Logger;
 
 public class RelayOptions {
 
@@ -55,7 +53,7 @@ public class RelayOptions {
     this.config = Require.nonNull("Config", config);
   }
 
-  private URI getServiceUri() {
+  public URI getServiceUri() {
     try {
       Optional<String> possibleUri = config.get(RELAY_SECTION, "url");
       if (possibleUri.isPresent()) {
@@ -74,13 +72,13 @@ public class RelayOptions {
         }
         URI uri = new URI(host);
         return new URI(
-          uri.getScheme(),
-          uri.getUserInfo(),
-          uri.getHost(),
-          uri.getPort(),
-          uri.getPath(),
-          null,
-          null);
+            uri.getScheme(),
+            uri.getUserInfo(),
+            uri.getHost(),
+            uri.getPort(),
+            uri.getPath(),
+            null,
+            null);
       }
       throw new ConfigException("Unable to determine the service url");
     } catch (URISyntaxException e) {
@@ -88,17 +86,32 @@ public class RelayOptions {
     }
   }
 
-  private boolean isServerUp(HttpClient client) {
-    if (!config.get(RELAY_SECTION, "status-endpoint").isPresent()) {
+  public URI getServiceStatusUri() {
+    try {
+      if (!config.get(RELAY_SECTION, "status-endpoint").isPresent()) {
+        return null;
+      }
+      String statusEndpoint = config.get(RELAY_SECTION, "status-endpoint").orElse("/status");
+      if (!statusEndpoint.startsWith("/")) {
+        statusEndpoint = "/" + statusEndpoint;
+      }
+      URI serviceUri = getServiceUri();
+      return new URI(serviceUri.toString() + statusEndpoint);
+    } catch (URISyntaxException e) {
+      throw new ConfigException("Unable to determine the service status url", e);
+    }
+  }
+
+  // Method being used in SessionSlot
+  @SuppressWarnings("unused")
+  private boolean isServiceUp(HttpClient client) {
+    URI serviceStatusUri = getServiceStatusUri();
+    if (serviceStatusUri == null) {
       // If no status endpoint was configured, we assume the server is up.
       return true;
     }
-    String statusEndpoint = config.get(RELAY_SECTION, "status-endpoint").orElse("/status");
-    if (!statusEndpoint.startsWith("/")) {
-      statusEndpoint = "/" + statusEndpoint;
-    }
     try {
-      HttpResponse response = client.execute(new HttpRequest(GET, statusEndpoint));
+      HttpResponse response = client.execute(new HttpRequest(GET, serviceStatusUri.toString()));
       LOG.fine(string(response));
       return 200 == response.getStatus();
     } catch (Exception e) {
@@ -107,18 +120,13 @@ public class RelayOptions {
   }
 
   public Map<Capabilities, Collection<SessionFactory>> getSessionFactories(
-    Tracer tracer,
-    HttpClient.Factory clientFactory) {
+      Tracer tracer, HttpClient.Factory clientFactory, Duration sessionTimeout) {
 
-    HttpClient client = clientFactory
-      .createClient(ClientConfig.defaultConfig().baseUri(getServiceUri()));
-
-    if (!isServerUp(client)) {
-      throw new ConfigException("Unable to reach the service at " + getServiceUri());
-    }
-
-    List<String> allConfigs = config.getAll(RELAY_SECTION, "configs")
-      .orElseThrow(() -> new ConfigException("Unable to find configs for " + getServiceUri()));
+    List<String> allConfigs =
+        config
+            .getAll(RELAY_SECTION, "configs")
+            .orElseThrow(
+                () -> new ConfigException("Unable to find configs for " + getServiceUri()));
 
     Multimap<Integer, Capabilities> parsedConfigs = HashMultimap.create();
     for (int i = 0; i < allConfigs.size(); i++) {
@@ -132,26 +140,28 @@ public class RelayOptions {
       if (i == allConfigs.size()) {
         throw new ConfigException("Unable to find stereotype config. " + allConfigs);
       }
-      Capabilities stereotype = JSON.toType(
-        extractConfiguredValue(allConfigs.get(i)),
-        Capabilities.class);
+      Capabilities stereotype =
+          JSON.toType(extractConfiguredValue(allConfigs.get(i)), Capabilities.class);
       parsedConfigs.put(maxSessions, stereotype);
     }
 
     ImmutableMultimap.Builder<Capabilities, SessionFactory> factories = ImmutableMultimap.builder();
     LOG.info(String.format("Adding relay configs for %s", getServiceUri()));
-    parsedConfigs.forEach((maxSessions, stereotype) -> {
-      for (int i = 0; i < maxSessions; i++) {
-        factories.put(
-          stereotype,
-          new RelaySessionFactory(
-            tracer,
-            clientFactory,
-            getServiceUri(),
-            stereotype));
-      }
-      LOG.info(String.format("Mapping %s, %d times", stereotype, maxSessions));
-    });
+    parsedConfigs.forEach(
+        (maxSessions, stereotype) -> {
+          for (int i = 0; i < maxSessions; i++) {
+            factories.put(
+                stereotype,
+                new RelaySessionFactory(
+                    tracer,
+                    clientFactory,
+                    sessionTimeout,
+                    getServiceUri(),
+                    getServiceStatusUri(),
+                    stereotype));
+          }
+          LOG.info(String.format("Mapping %s, %d times", stereotype, maxSessions));
+        });
     return factories.build().asMap();
   }
 
@@ -161,5 +171,4 @@ public class RelayOptions {
     }
     return keyValue;
   }
-
 }

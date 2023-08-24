@@ -17,38 +17,6 @@
 
 package org.openqa.selenium.support.events;
 
-import org.openqa.selenium.Alert;
-import org.openqa.selenium.Beta;
-import org.openqa.selenium.By;
-import org.openqa.selenium.Capabilities;
-import org.openqa.selenium.Cookie;
-import org.openqa.selenium.Dimension;
-import org.openqa.selenium.HasCapabilities;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.OutputType;
-import org.openqa.selenium.Point;
-import org.openqa.selenium.Rectangle;
-import org.openqa.selenium.TakesScreenshot;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebDriverException;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.WindowType;
-import org.openqa.selenium.WrapsDriver;
-import org.openqa.selenium.WrapsElement;
-import org.openqa.selenium.interactions.Coordinates;
-import org.openqa.selenium.interactions.HasInputDevices;
-import org.openqa.selenium.interactions.HasTouchScreen;
-import org.openqa.selenium.interactions.Interactive;
-import org.openqa.selenium.interactions.Keyboard;
-import org.openqa.selenium.interactions.Locatable;
-import org.openqa.selenium.interactions.Mouse;
-import org.openqa.selenium.interactions.Sequence;
-import org.openqa.selenium.interactions.TouchScreen;
-import org.openqa.selenium.logging.Logs;
-import org.openqa.selenium.support.events.internal.EventFiringKeyboard;
-import org.openqa.selenium.support.events.internal.EventFiringMouse;
-import org.openqa.selenium.support.events.internal.EventFiringTouch;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.net.URL;
@@ -63,62 +31,85 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.openqa.selenium.Alert;
+import org.openqa.selenium.Beta;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Capabilities;
+import org.openqa.selenium.Cookie;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.HasCapabilities;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.Rectangle;
+import org.openqa.selenium.SearchContext;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverException;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.WindowType;
+import org.openqa.selenium.WrapsDriver;
+import org.openqa.selenium.WrapsElement;
+import org.openqa.selenium.interactions.Coordinates;
+import org.openqa.selenium.interactions.Interactive;
+import org.openqa.selenium.interactions.Locatable;
+import org.openqa.selenium.interactions.Sequence;
+import org.openqa.selenium.logging.Logs;
 
 /**
- * A wrapper around an arbitrary {@link WebDriver} instance which supports registering of a
- * {@link WebDriverEventListener}, e&#46;g&#46; for logging purposes.
+ * A wrapper around an arbitrary {@link WebDriver} instance which supports registering of a {@link
+ * WebDriverEventListener}, e&#46;g&#46; for logging purposes.
+ *
  * @deprecated Use {@link EventFiringDecorator} and {@link WebDriverListener} instead
  */
 @Deprecated
-public class EventFiringWebDriver implements
-  WebDriver,
-  JavascriptExecutor,
-  TakesScreenshot,
-  WrapsDriver,
-  HasInputDevices,
-  HasTouchScreen,
-  Interactive,
-  HasCapabilities {
+public class EventFiringWebDriver
+    implements WebDriver,
+        JavascriptExecutor,
+        TakesScreenshot,
+        WrapsDriver,
+        Interactive,
+        HasCapabilities {
 
   private final WebDriver driver;
 
-  private final List<WebDriverEventListener> eventListeners =
-      new ArrayList<>();
-  private final WebDriverEventListener dispatcher = (WebDriverEventListener) Proxy
-      .newProxyInstance(
-          WebDriverEventListener.class.getClassLoader(),
-          new Class[] {WebDriverEventListener.class},
-          (proxy, method, args) -> {
-            try {
-            for (WebDriverEventListener eventListener : eventListeners) {
-              method.invoke(eventListener, args);
-            }
-            return null;
-            } catch (InvocationTargetException e) {
-              throw e.getTargetException();
-            }
-          }
-      );
+  private final List<WebDriverEventListener> eventListeners = new ArrayList<>();
+  private final WebDriverEventListener dispatcher =
+      (WebDriverEventListener)
+          Proxy.newProxyInstance(
+              WebDriverEventListener.class.getClassLoader(),
+              new Class[] {WebDriverEventListener.class},
+              (proxy, method, args) -> {
+                try {
+                  for (WebDriverEventListener eventListener : eventListeners) {
+                    method.invoke(eventListener, args);
+                  }
+                  return null;
+                } catch (InvocationTargetException e) {
+                  throw e.getTargetException();
+                }
+              });
 
   public EventFiringWebDriver(final WebDriver driver) {
     Class<?>[] allInterfaces = extractInterfaces(driver);
 
-    this.driver = (WebDriver) Proxy.newProxyInstance(
-        WebDriverEventListener.class.getClassLoader(),
-        allInterfaces,
-        (proxy, method, args) -> {
-          if ("getWrappedDriver".equals(method.getName())) {
-            return driver;
-          }
+    this.driver =
+        (WebDriver)
+            Proxy.newProxyInstance(
+                WebDriverEventListener.class.getClassLoader(),
+                allInterfaces,
+                (proxy, method, args) -> {
+                  if ("getWrappedDriver".equals(method.getName())) {
+                    return driver;
+                  }
 
-          try {
-            return method.invoke(driver, args);
-          } catch (InvocationTargetException e) {
-            dispatcher.onException(e.getTargetException(), driver);
-            throw e.getTargetException();
-          }
-        }
-    );
+                  try {
+                    return method.invoke(driver, args);
+                  } catch (InvocationTargetException e) {
+                    dispatcher.onException(e.getTargetException(), driver);
+                    throw e.getTargetException();
+                  }
+                });
   }
 
   private Class<?>[] extractInterfaces(Object object) {
@@ -159,7 +150,6 @@ public class EventFiringWebDriver implements
     eventListeners.remove(eventListener);
     return this;
   }
-
 
   @Override
   public WebDriver getWrappedDriver() {
@@ -296,23 +286,22 @@ public class EventFiringWebDriver implements
       return ((List<?>) result).stream().map(this::wrapResult).collect(Collectors.toList());
     }
     if (result instanceof Map) {
-      return ((Map<?, ?>) result).entrySet().stream().collect(
-          HashMap::new,
-          (m, e) -> m.put(e.getKey(), e.getValue()),
-          Map::putAll);
+      return ((Map<?, ?>) result)
+          .entrySet().stream()
+              .collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), Map::putAll);
     }
 
     return result;
   }
 
-   @Override
-   public <X> X getScreenshotAs(OutputType<X> target) throws WebDriverException {
-     if (driver instanceof TakesScreenshot) {
-        dispatcher.beforeGetScreenshotAs(target);
-        X screenshot = ((TakesScreenshot) driver).getScreenshotAs(target);
-        dispatcher.afterGetScreenshotAs(target, screenshot);
-        return screenshot;
-     }
+  @Override
+  public <X> X getScreenshotAs(OutputType<X> target) throws WebDriverException {
+    if (driver instanceof TakesScreenshot) {
+      dispatcher.beforeGetScreenshotAs(target);
+      X screenshot = ((TakesScreenshot) driver).getScreenshotAs(target);
+      dispatcher.afterGetScreenshotAs(target, screenshot);
+      return screenshot;
+    }
 
     throw new UnsupportedOperationException(
         "Underlying driver instance does not support taking screenshots");
@@ -338,41 +327,13 @@ public class EventFiringWebDriver implements
   }
 
   @Override
-  public Keyboard getKeyboard() {
-    if (driver instanceof HasInputDevices) {
-      return new EventFiringKeyboard(driver, dispatcher);
-    }
-    throw new UnsupportedOperationException("Underlying driver does not implement advanced"
-        + " user interactions yet.");
-  }
-
-  @Override
-  public Mouse getMouse() {
-    if (driver instanceof HasInputDevices) {
-      return new EventFiringMouse(driver, dispatcher);
-    }
-    throw new UnsupportedOperationException("Underlying driver does not implement advanced"
-        + " user interactions yet.");
-  }
-
-  @Override
-  public TouchScreen getTouch() {
-    if (driver instanceof HasTouchScreen) {
-      return new EventFiringTouch(driver, dispatcher);
-    }
-    throw new UnsupportedOperationException("Underlying driver does not implement advanced"
-        + " user interactions yet.");
- }
-
-  @Override
   public void perform(Collection<Sequence> actions) {
     if (driver instanceof Interactive) {
       ((Interactive) driver).perform(actions);
       return;
     }
-    throw new UnsupportedOperationException("Underlying driver does not implement advanced"
-                                            + " user interactions yet.");
-
+    throw new UnsupportedOperationException(
+        "Underlying driver does not implement advanced" + " user interactions yet.");
   }
 
   @Override
@@ -381,9 +342,8 @@ public class EventFiringWebDriver implements
       ((Interactive) driver).resetInputState();
       return;
     }
-    throw new UnsupportedOperationException("Underlying driver does not implement advanced"
-                                            + " user interactions yet.");
-
+    throw new UnsupportedOperationException(
+        "Underlying driver does not implement advanced" + " user interactions yet.");
   }
 
   @Override
@@ -395,29 +355,29 @@ public class EventFiringWebDriver implements
         "Underlying driver does not implement getting capabilities yet.");
   }
 
-
-  private class EventFiringWebElement implements WebElement, WrapsElement, WrapsDriver,
-                                                 org.openqa.selenium.interactions.Locatable {
+  private class EventFiringWebElement
+      implements WebElement, WrapsElement, WrapsDriver, org.openqa.selenium.interactions.Locatable {
 
     private final WebElement element;
     private final WebElement underlyingElement;
 
     private EventFiringWebElement(final WebElement element) {
-      this.element = (WebElement) Proxy.newProxyInstance(
-          WebDriverEventListener.class.getClassLoader(),
-          extractInterfaces(element),
-          (proxy, method, args) -> {
-            if (method.getName().equals("getWrappedElement")) {
-              return element;
-            }
-            try {
-              return method.invoke(element, args);
-            } catch (InvocationTargetException e) {
-              dispatcher.onException(e.getTargetException(), driver);
-              throw e.getTargetException();
-            }
-          }
-      );
+      this.element =
+          (WebElement)
+              Proxy.newProxyInstance(
+                  WebDriverEventListener.class.getClassLoader(),
+                  extractInterfaces(element),
+                  (proxy, method, args) -> {
+                    if (method.getName().equals("getWrappedElement")) {
+                      return element;
+                    }
+                    try {
+                      return method.invoke(element, args);
+                    } catch (InvocationTargetException e) {
+                      dispatcher.onException(e.getTargetException(), driver);
+                      throw e.getTargetException();
+                    }
+                  });
       this.underlyingElement = element;
     }
 
@@ -453,8 +413,23 @@ public class EventFiringWebDriver implements
     }
 
     @Override
+    public String getDomProperty(String name) {
+      return element.getDomProperty(name);
+    }
+
+    @Override
     public String getAttribute(String name) {
       return element.getAttribute(name);
+    }
+
+    @Override
+    public String getAriaRole() {
+      return element.getAriaRole();
+    }
+
+    @Override
+    public String getAccessibleName() {
+      return element.getAccessibleName();
     }
 
     @Override
@@ -478,6 +453,11 @@ public class EventFiringWebDriver implements
       String text = element.getText();
       dispatcher.afterGetText(element, driver, text);
       return text;
+    }
+
+    @Override
+    public SearchContext getShadowRoot() {
+      return element.getShadowRoot();
     }
 
     @Override
@@ -658,11 +638,6 @@ public class EventFiringWebDriver implements
     @Override
     public Timeouts timeouts() {
       return new EventFiringTimeouts(options.timeouts());
-    }
-
-    @Override
-    public ImeHandler ime() {
-      return options.ime();
     }
 
     @Override

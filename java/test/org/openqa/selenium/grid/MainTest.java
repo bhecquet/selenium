@@ -19,20 +19,19 @@ package org.openqa.selenium.grid;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Before;
-import org.junit.Test;
-
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class MainTest {
+class MainTest {
 
   ByteArrayOutputStream out;
   ByteArrayOutputStream err;
 
-  @Before
+  @BeforeEach
   public void init() {
     out = new ByteArrayOutputStream();
     err = new ByteArrayOutputStream();
@@ -47,15 +46,14 @@ public class MainTest {
   }
 
   @Test
-  public void shouldPrintAListOfCommandsWhenStartedWithoutOptions() {
-    new Main(toPrintStream(out), toPrintStream(err), new String[]{}).go();
+  void shouldPrintAListOfCommandsWhenStartedWithoutOptions() {
+    new Main(toPrintStream(out), toPrintStream(err), new String[] {}).go();
     assertThat(out.toString()).contains("A list of all the commands available");
   }
 
   @Test
-  public void shouldPrintAListOfCommandsWhenStartedWithHelpOption() {
-    new Main(toPrintStream(out), toPrintStream(err), new String[]{"--help"}).go();
+  void shouldPrintAListOfCommandsWhenStartedWithHelpOption() {
+    new Main(toPrintStream(out), toPrintStream(err), new String[] {"--help"}).go();
     assertThat(out.toString()).contains("A list of all the commands available");
   }
-
 }

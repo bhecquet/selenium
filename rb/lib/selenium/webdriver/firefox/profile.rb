@@ -26,11 +26,11 @@ module Selenium
         VALID_PREFERENCE_TYPES = [TrueClass, FalseClass, Integer, Float, String].freeze
 
         DEFAULT_PREFERENCES = {
-          "browser.newtabpage.enabled" => false,
-          "browser.startup.homepage" => "about:blank",
-          "browser.usedOnWindows10.introURL" => "about:blank",
-          "network.captive-portal-service.enabled" => false,
-          "security.csp.enable" => false
+          'browser.newtabpage.enabled' => false,
+          'browser.startup.homepage' => 'about:blank',
+          'browser.usedOnWindows10.introURL' => 'about:blank',
+          'network.captive-portal-service.enabled' => false,
+          'security.csp.enable' => false
         }.freeze
 
         attr_reader   :name, :log_file
@@ -143,7 +143,7 @@ module Selenium
           end
         end
 
-        alias_method :as_json, :encoded
+        alias as_json encoded
 
         private
 
@@ -160,7 +160,7 @@ module Selenium
           destination = File.join(directory, 'extensions')
 
           @extensions.each do |name, extension|
-            WebDriver.logger.debug({extenstion: name}.inspect)
+            WebDriver.logger.debug({extension: name}.inspect, id: :firefox_profile)
             extension.write_to(destination)
           end
         end

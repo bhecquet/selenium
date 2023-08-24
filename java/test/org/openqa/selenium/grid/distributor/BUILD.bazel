@@ -1,13 +1,14 @@
 load("@rules_jvm_external//:defs.bzl", "artifact")
-load("//java:defs.bzl", "java_test_suite")
+load("//java:defs.bzl", "JUNIT5_DEPS", "java_test_suite")
+load("//java:version.bzl", "TOOLS_JAVA_VERSION")
 
 java_test_suite(
     name = "medium-tests",
     size = "medium",
-    srcs = glob(["*Test.java"]),
+    srcs = glob(["*.java"]),
     javacopts = [
         "--release",
-        "11",
+        TOOLS_JAVA_VERSION,
     ],
     deps = [
         "//java/src/org/openqa/selenium:core",
@@ -35,8 +36,8 @@ java_test_suite(
         "//java/test/org/openqa/selenium/remote/tracing:tracing-support",
         artifact("com.google.guava:guava"),
         artifact("io.opentelemetry:opentelemetry-api"),
-        artifact("junit:junit"),
+        artifact("org.junit.jupiter:junit-jupiter-api"),
         artifact("org.assertj:assertj-core"),
         artifact("org.zeromq:jeromq"),
-    ],
+    ] + JUNIT5_DEPS,
 )

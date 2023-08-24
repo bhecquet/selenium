@@ -42,10 +42,10 @@ module Selenium
       def ==(other)
         other.is_a?(self.class) && ref == other.ref
       end
-      alias_method :eql?, :==
+      alias eql? ==
 
       def hash
-        @id.hash ^ @bridge.hash
+        [@id, @bridge].hash
       end
 
       #
@@ -81,7 +81,6 @@ module Selenium
       private
 
       attr_reader :bridge
-
     end # ShadowRoot
   end # WebDriver
 end # Selenium

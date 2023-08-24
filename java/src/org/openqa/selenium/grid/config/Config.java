@@ -17,10 +17,14 @@
 
 package org.openqa.selenium.grid.config;
 
+import com.google.common.collect.ImmutableList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import org.openqa.selenium.json.Json;
 
 public interface Config {
 
@@ -46,12 +50,37 @@ public interface Config {
     String clazz = get(section, option).orElse(defaultClazz);
 
     // We don't declare a constant on the interface, natch.
-    Logger.getLogger(Config.class.getName()).fine(String.format("Creating %s as instance of %s", clazz, typeOfClass));
+    Logger.getLogger(Config.class.getName())
+        .fine(String.format("Creating %s as instance of %s", clazz, typeOfClass));
 
-    try{
+    try {
       return ClassCreation.callCreateMethod(clazz, typeOfClass, this);
     } catch (ReflectiveOperationException e) {
       throw new IllegalArgumentException("Unable to find class: " + clazz, e);
     }
+  }
+
+  String DELIM_KEY = "\u001E";
+  String DELIMITER = DELIM_KEY + "=\"record-separator\"";
+
+  default List<String> toEntryList(Map<String, Object> mapItem) {
+    // transform config settings map into list of key/value strings
+    List<String> entryList =
+        mapItem.entrySet().stream()
+            .map(
+                entry -> {
+                  return String.format("%s=%s", entry.getKey(), toJson(entry.getValue()));
+                })
+            .collect(Collectors.toList());
+    // add record separator
+    entryList.add(DELIMITER);
+    // return immutable config settings list
+    return ImmutableList.<String>builder().addAll(entryList).build();
+  }
+
+  default String toJson(Object value) {
+    StringBuilder jsonStr = new StringBuilder();
+    new Json().newOutput(jsonStr).setPrettyPrint(false).write(value);
+    return jsonStr.toString();
   }
 }

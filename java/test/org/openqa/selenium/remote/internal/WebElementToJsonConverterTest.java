@@ -22,24 +22,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import com.google.common.collect.ImmutableMap;
-
-import org.junit.Test;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.WrappedWebElement;
 import org.openqa.selenium.remote.Dialect;
 import org.openqa.selenium.remote.RemoteWebElement;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-
-public class WebElementToJsonConverterTest {
+class WebElementToJsonConverterTest {
 
   private static final WebElementToJsonConverter CONVERTER = new WebElementToJsonConverter();
 
   @Test
-  public void returnsPrimitivesAsIs() {
+  void returnsPrimitivesAsIs() {
     assertThat(CONVERTER.apply(null)).isNull();
     assertThat(CONVERTER.apply("abc")).isEqualTo("abc");
     assertThat(CONVERTER.apply(Boolean.TRUE)).isEqualTo(Boolean.TRUE);
@@ -48,7 +46,7 @@ public class WebElementToJsonConverterTest {
   }
 
   @Test
-  public void convertsRemoteWebElementToWireProtocolMap() {
+  void convertsRemoteWebElementToWireProtocolMap() {
     RemoteWebElement element = new RemoteWebElement();
     element.setId("abc123");
 
@@ -57,7 +55,7 @@ public class WebElementToJsonConverterTest {
   }
 
   @Test
-  public void unwrapsWrappedElements() {
+  void unwrapsWrappedElements() {
     RemoteWebElement element = new RemoteWebElement();
     element.setId("abc123");
 
@@ -66,7 +64,7 @@ public class WebElementToJsonConverterTest {
   }
 
   @Test
-  public void unwrapsWrappedElements_multipleLevelsOfWrapping() {
+  void unwrapsWrappedElements_multipleLevelsOfWrapping() {
     RemoteWebElement element = new RemoteWebElement();
     element.setId("abc123");
 
@@ -80,7 +78,7 @@ public class WebElementToJsonConverterTest {
   }
 
   @Test
-  public void convertsSimpleCollections() {
+  void convertsSimpleCollections() {
     Object converted = CONVERTER.apply(asList(null, "abc", true, 123, Math.PI));
     assertThat(converted).isInstanceOf(Collection.class);
 
@@ -89,7 +87,7 @@ public class WebElementToJsonConverterTest {
   }
 
   @Test
-  public void convertsNestedCollections_simpleValues() {
+  void convertsNestedCollections_simpleValues() {
     List<?> innerList = asList(123, "abc");
     List<Object> outerList = asList("apples", "oranges", innerList);
 
@@ -107,24 +105,25 @@ public class WebElementToJsonConverterTest {
   }
 
   @Test
-  public void requiresMapsToHaveStringKeys() {
+  void requiresMapsToHaveStringKeys() {
     assertThatExceptionOfType(IllegalArgumentException.class)
         .isThrownBy(() -> CONVERTER.apply(ImmutableMap.of(new Object(), "bunny")));
   }
 
   @Test
-  public void requiresNestedMapsToHaveStringKeys() {
+  void requiresNestedMapsToHaveStringKeys() {
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> CONVERTER.apply(
-            ImmutableMap.of("one", ImmutableMap.of("two", ImmutableMap.of(3, "not good")))));
+        .isThrownBy(
+            () ->
+                CONVERTER.apply(
+                    ImmutableMap.of(
+                        "one", ImmutableMap.of("two", ImmutableMap.of(3, "not good")))));
   }
 
   @Test
-  public void convertsASimpleMap() {
-    Object converted = CONVERTER.apply(ImmutableMap.of(
-        "one", 1,
-        "fruit", "apples",
-        "honest", true));
+  void convertsASimpleMap() {
+    Object converted =
+        CONVERTER.apply(ImmutableMap.of("one", 1, "fruit", "apples", "honest", true));
     assertThat(converted).isInstanceOf(Map.class);
 
     @SuppressWarnings("unchecked")
@@ -137,12 +136,18 @@ public class WebElementToJsonConverterTest {
 
   @SuppressWarnings("unchecked")
   @Test
-  public void convertsANestedMap() {
-    Object converted = CONVERTER.apply(ImmutableMap.of(
-        "one", 1,
-        "fruit", "apples",
-        "honest", true,
-        "nested", ImmutableMap.of("bugs", "bunny")));
+  void convertsANestedMap() {
+    Object converted =
+        CONVERTER.apply(
+            ImmutableMap.of(
+                "one",
+                1,
+                "fruit",
+                "apples",
+                "honest",
+                true,
+                "nested",
+                ImmutableMap.of("bugs", "bunny")));
     assertThat(converted).isInstanceOf(Map.class);
 
     Map<String, Object> map = (Map<String, Object>) converted;
@@ -159,7 +164,7 @@ public class WebElementToJsonConverterTest {
 
   @SuppressWarnings("unchecked")
   @Test
-  public void convertsAListWithAWebElement() {
+  void convertsAListWithAWebElement() {
     RemoteWebElement element = new RemoteWebElement();
     element.setId("abc123");
 
@@ -177,7 +182,7 @@ public class WebElementToJsonConverterTest {
 
   @SuppressWarnings("unchecked")
   @Test
-  public void convertsAMapWithAWebElement() {
+  void convertsAMapWithAWebElement() {
     RemoteWebElement element = new RemoteWebElement();
     element.setId("abc123");
 
@@ -190,26 +195,27 @@ public class WebElementToJsonConverterTest {
   }
 
   @Test
-  public void convertsAnArray() {
-    Object value = CONVERTER.apply(new Object[] {
-        "abc123", true, 123, Math.PI
-    });
+  void convertsAnArray() {
+    Object value1 = CONVERTER.apply(new Object[] {"abc123", true, 123, Math.PI});
 
-    assertThat(value).isInstanceOf(Collection.class);
-    assertContentsInOrder(new ArrayList<>((Collection<?>) value),
-        "abc123", true, 123, Math.PI);
+    assertThat(value1).isInstanceOf(Collection.class);
+    assertContentsInOrder(new ArrayList<>((Collection<?>) value1), "abc123", true, 123, Math.PI);
+
+    Object value2 = CONVERTER.apply(new int[] {123, 456, 789});
+
+    assertThat(value2).isInstanceOf(Collection.class);
+    assertContentsInOrder(new ArrayList<>((Collection<?>) value2), 123, 456, 789);
   }
 
   @Test
-  public void convertsAnArrayWithAWebElement() {
+  void convertsAnArrayWithAWebElement() {
     RemoteWebElement element = new RemoteWebElement();
     element.setId("abc123");
 
-    Object value = CONVERTER.apply(new Object[] { element });
-    assertContentsInOrder(new ArrayList<>((Collection<?>) value),
-        ImmutableMap.of(
-          Dialect.OSS.getEncodedElementKey(), "abc123",
-          Dialect.W3C.getEncodedElementKey(), "abc123"));
+    Object value = CONVERTER.apply(new Object[] {element});
+    assertContentsInOrder(
+        new ArrayList<>((Collection<?>) value),
+        ImmutableMap.of(Dialect.W3C.getEncodedElementKey(), "abc123"));
   }
 
   private static WrappedWebElement wrapElement(WebElement element) {
@@ -219,10 +225,8 @@ public class WebElementToJsonConverterTest {
   private static void assertIsWebElementObject(Object value, String expectedKey) {
     assertThat(value).isInstanceOf(Map.class);
 
-    Map<?, ?>  map = (Map<?, ?>) value;
-    assertThat(map).hasSize(2);
-    assertThat(map.containsKey(Dialect.OSS.getEncodedElementKey())).isTrue();
-    assertThat(map.get(Dialect.OSS.getEncodedElementKey())).isEqualTo(expectedKey);
+    Map<?, ?> map = (Map<?, ?>) value;
+    assertThat(map).hasSize(1);
     assertThat(map.containsKey(Dialect.W3C.getEncodedElementKey())).isTrue();
     assertThat(map.get(Dialect.W3C.getEncodedElementKey())).isEqualTo(expectedKey);
   }
@@ -231,5 +235,4 @@ public class WebElementToJsonConverterTest {
     List<Object> expected = asList(expectedContents);
     assertThat(list).isEqualTo(expected);
   }
-
 }

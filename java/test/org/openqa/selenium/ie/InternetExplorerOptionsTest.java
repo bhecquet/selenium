@@ -18,7 +18,6 @@
 package org.openqa.selenium.ie;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 import static org.assertj.core.api.InstanceOfAssertFactories.MAP;
 import static org.openqa.selenium.ie.InternetExplorerDriver.FORCE_CREATE_PROCESS;
 import static org.openqa.selenium.ie.InternetExplorerDriver.IE_SWITCHES;
@@ -26,22 +25,20 @@ import static org.openqa.selenium.ie.InternetExplorerDriver.INITIAL_BROWSER_URL;
 import static org.openqa.selenium.ie.InternetExplorerDriver.INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS;
 import static org.openqa.selenium.ie.InternetExplorerOptions.IE_OPTIONS;
 
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import java.util.Map;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.Platform;
 import org.openqa.selenium.json.Json;
 import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.testing.UnitTests;
 
-import java.util.Map;
-
-@Category(UnitTests.class)
-public class InternetExplorerOptionsTest {
+@Tag("UnitTests")
+class InternetExplorerOptionsTest {
 
   @Test
-  public void shouldAllowACapabilityToBeSet() {
+  void shouldAllowACapabilityToBeSet() {
     InternetExplorerOptions options = new InternetExplorerOptions();
     options.setCapability("cheese", "cake");
 
@@ -49,48 +46,49 @@ public class InternetExplorerOptionsTest {
   }
 
   @Test
-  public void shouldMirrorCapabilitiesForIeProperly() {
+  void shouldMirrorCapabilitiesForIeProperly() {
     String expected = "http://cheese.example.com";
-    InternetExplorerOptions options = new InternetExplorerOptions()
-        .withInitialBrowserUrl(expected);
+    InternetExplorerOptions options = new InternetExplorerOptions().withInitialBrowserUrl(expected);
 
     Map<String, Object> map = options.asMap();
 
-    assertThat(map).containsEntry(INITIAL_BROWSER_URL, expected);
-    assertThat(map).containsKey("se:ieOptions");
-    assertThat(map.get("se:ieOptions")).asInstanceOf(MAP)
-        .containsEntry(INITIAL_BROWSER_URL, expected);
+    assertThat(map).containsKey(IE_OPTIONS);
+    assertThat(map.get(IE_OPTIONS)).asInstanceOf(MAP).containsEntry(INITIAL_BROWSER_URL, expected);
   }
 
   @Test
-  public void shouldMirrorCapabilitiesFromPassedInIeOptions() {
-    InternetExplorerOptions toMirror = new InternetExplorerOptions()
-        .introduceFlakinessByIgnoringSecurityDomains();
+  void shouldMirrorCapabilitiesFromPassedInIeOptions() {
+    InternetExplorerOptions toMirror =
+        new InternetExplorerOptions().introduceFlakinessByIgnoringSecurityDomains();
 
     // This is damn weird.
     InternetExplorerOptions options = new InternetExplorerOptions();
-    options.setCapability("se:ieOptions", toMirror);
+    options.setCapability(IE_OPTIONS, toMirror);
 
-    assertThat(options.is(INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS)).isTrue();
-  }
-
-  @Test
-  public void shouldPopulateIeOptionsFromExistingCapabilitiesWhichLackThem() {
-    Capabilities caps = new ImmutableCapabilities(
-        INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS, true);
-
-    InternetExplorerOptions options = new InternetExplorerOptions(caps);
-
-    assertThat(options.is(INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS)).isTrue();
-    assertThat(options.getCapability("se:ieOptions")).asInstanceOf(MAP)
+    Map<String, Object> map = options.asMap();
+    assertThat(map.get(IE_OPTIONS))
+        .asInstanceOf(MAP)
         .containsEntry(INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS, true);
   }
 
   @Test
-  public void shouldSurviveASerializationRoundTrip() {
-    InternetExplorerOptions options = new InternetExplorerOptions()
-        .withInitialBrowserUrl("http://www.cheese.com")
-        .addCommandSwitches("--cake");
+  void shouldPopulateIeOptionsFromExistingCapabilitiesWhichLackThem() {
+    Capabilities caps =
+        new ImmutableCapabilities(INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS, true);
+
+    InternetExplorerOptions options = new InternetExplorerOptions(caps);
+
+    assertThat(options.getCapability(IE_OPTIONS))
+        .asInstanceOf(MAP)
+        .containsEntry(INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS, true);
+  }
+
+  @Test
+  void shouldSurviveASerializationRoundTrip() {
+    InternetExplorerOptions options =
+        new InternetExplorerOptions()
+            .withInitialBrowserUrl("http://www.cheese.com")
+            .addCommandSwitches("--cake");
 
     String json = new Json().toJson(options);
     Capabilities capabilities = new Json().toType(json, Capabilities.class);
@@ -103,7 +101,7 @@ public class InternetExplorerOptionsTest {
   }
 
   @Test
-  public void shouldSetIeOptionsCapabilityWhenConstructedFromExistingCapabilities() {
+  void shouldSetIeOptionsCapabilityWhenConstructedFromExistingCapabilities() {
     InternetExplorerOptions expected = new InternetExplorerOptions();
     expected.setCapability("requireWindowFocus", true);
 
@@ -116,19 +114,20 @@ public class InternetExplorerOptionsTest {
   }
 
   @Test
-  public void mergingOptionsMergesArguments() {
-    InternetExplorerOptions one = new InternetExplorerOptions().useCreateProcessApiToLaunchIe().addCommandSwitches("-private");
+  void mergingOptionsMergesArguments() {
+    InternetExplorerOptions one =
+        new InternetExplorerOptions()
+            .useCreateProcessApiToLaunchIe()
+            .addCommandSwitches("-private");
     InternetExplorerOptions two = new InternetExplorerOptions();
-    InternetExplorerOptions merged = one.merge(two);
+    InternetExplorerOptions merged = two.merge(one);
 
     Map<String, Object> asMap = merged.asMap();
     assertThat(asMap)
-      .containsEntry(FORCE_CREATE_PROCESS, true)
-      .extractingByKey(IE_SWITCHES).asInstanceOf(LIST)
-      .containsExactly("-private");
-    assertThat(asMap)
-      .extractingByKey(IE_OPTIONS).asInstanceOf(MAP)
-      .containsEntry(FORCE_CREATE_PROCESS, true)
-      .extractingByKey(IE_SWITCHES).isEqualTo("-private");
+        .extractingByKey(IE_OPTIONS)
+        .asInstanceOf(MAP)
+        .containsEntry(FORCE_CREATE_PROCESS, true)
+        .extractingByKey(IE_SWITCHES)
+        .isEqualTo("-private");
   }
 }

@@ -17,18 +17,19 @@
 
 package org.openqa.selenium.javascript;
 
-import org.junit.BeforeClass;
-import org.junit.runner.RunWith;
-
 import static org.assertj.core.api.Assumptions.assumeThat;
 
+import java.io.IOException;
+import org.junit.jupiter.api.BeforeAll;
 
-@RunWith(JavaScriptTestSuite.class)
-public class ClosureTestSuite {
+class ClosureTestSuite extends JavaScriptTestSuite {
 
-  @BeforeClass
+  public ClosureTestSuite() throws IOException {
+    super();
+  }
+
+  @BeforeAll
   public static void checkShouldRun() {
     assumeThat(Boolean.getBoolean("selenium.skiptest")).isFalse();
   }
-
 }

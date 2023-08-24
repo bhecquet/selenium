@@ -15,38 +15,49 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import React, { ReactNode } from 'react'
-import { StyleRules, Theme, withStyles } from '@material-ui/core/styles'
-import Toolbar from '@material-ui/core/Toolbar'
-import Typography from '@material-ui/core/Typography'
-
-const useStyles = (theme: Theme): StyleRules => (
-  {
-    root: {
-      paddingLeft: theme.spacing(2),
-      paddingRight: theme.spacing(1)
-    },
-    title: {
-      flex: '1 1 100%'
-    }
-  })
+import React from 'react'
+import Toolbar from '@mui/material/Toolbar'
+import Typography from '@mui/material/Typography'
+import Box from '@mui/material/Box'
 
 interface EnhancedTableToolbarProps {
   title: string
-  classes: any
+  children?: JSX.Element
 }
 
-class EnhancedTableToolbar extends React.Component<EnhancedTableToolbarProps, {}> {
-  render (): ReactNode {
-    const { title, classes } = this.props
-    return (
-      <Toolbar className={classes.root}>
-        <Typography className={classes.title} variant='h3' id='tableTitle' component='div'>
-          {title}
-        </Typography>
-      </Toolbar>
-    )
-  }
+function EnhancedTableToolbar (props: EnhancedTableToolbarProps) {
+  const {
+    title,
+    children
+  } = props
+
+  return (
+    <Toolbar sx={{ paddingLeft: 2, paddingRight: 1 }}>
+      <Typography
+        textAlign='center'
+        sx={{ flex: '1 1 100%' }}
+        variant='h3'
+        id='tableTitle'
+        component='div'
+      >
+        <Box
+          component='span'
+          display='flex'
+          alignItems='center'
+        >
+          <Box
+            component='span'
+            display='flex'
+            justifyContent='center'
+            flex={1}
+          >
+            {title}
+          </Box>
+          {children}
+        </Box>
+      </Typography>
+    </Toolbar>
+  )
 }
 
-export default withStyles(useStyles)(EnhancedTableToolbar)
+export default EnhancedTableToolbar

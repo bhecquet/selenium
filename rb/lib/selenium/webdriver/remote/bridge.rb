@@ -21,6 +21,7 @@ module Selenium
   module WebDriver
     module Remote
       class Bridge
+        autoload :COMMANDS, 'selenium/webdriver/remote/bridge/commands'
         include Atoms
 
         PORT = 4444
@@ -118,7 +119,7 @@ module Selenium
         end
 
         def alert=(keys)
-          execute :send_alert_text, {}, {value: keys.split(//), text: keys}
+          execute :send_alert_text, {}, {value: keys.chars, text: keys}
         end
 
         def alert_text
@@ -186,6 +187,7 @@ module Selenium
           execute :delete_session
           http.close
         rescue *QUIT_ERRORS
+          nil
         end
 
         def close
@@ -367,18 +369,10 @@ module Selenium
         # actions
         #
 
-        def action(deprecated_async = nil, async: false, devices: [])
-          ActionBuilder.new self, nil, nil, deprecated_async, async: async, devices: devices
+        def action(async: false, devices: [], duration: 250)
+          ActionBuilder.new self, async: async, devices: devices, duration: duration
         end
-        alias_method :actions, :action
-
-        def mouse
-          raise Error::UnsupportedOperationError, '#mouse is no longer supported, use #action instead'
-        end
-
-        def keyboard
-          raise Error::UnsupportedOperationError, '#keyboard is no longer supported, use #action instead'
-        end
+        alias actions action
 
         def send_actions(data)
           execute :actions, {}, {actions: data}
@@ -400,20 +394,21 @@ module Selenium
           # TODO: rework file detectors before Selenium 4.0
           if @file_detector
             local_files = keys.first&.split("\n")&.map { |key| @file_detector.call(Array(key)) }&.compact
-            if local_files.any?
+            if local_files&.any?
               keys = local_files.map { |local_file| upload(local_file) }
               keys = Array(keys.join("\n"))
             end
           end
 
           # Keep .split(//) for backward compatibility for now
-          text = keys.join('')
-          execute :element_send_keys, {id: element}, {value: text.split(//), text: text}
+          text = keys.join
+          execute :element_send_keys, {id: element}, {value: text.chars, text: text}
         end
 
         def upload(local_file)
           unless File.file?(local_file)
-            WebDriver.logger.debug("File detector only works with files. #{local_file.inspect} isn`t a file!")
+            WebDriver.logger.debug("File detector only works with files. #{local_file.inspect} isn`t a file!",
+                                   id: :file_detector)
             raise Error::WebDriverError, "You are trying to work with something that isn't a file."
           end
 
@@ -425,10 +420,19 @@ module Selenium
         end
 
         def submit_element(element)
-          form = find_element_by('xpath', "./ancestor-or-self::form", [:element, element])
-          execute_script("var e = arguments[0].ownerDocument.createEvent('Event');" \
-                            "e.initEvent('submit', true, true);" \
-                            'if (arguments[0].dispatchEvent(e)) { arguments[0].submit() }', form.as_json)
+          script = "/* submitForm */ var form = arguments[0];\n" \
+                   "while (form.nodeName != \"FORM\" && form.parentNode) {\n  " \
+                   "form = form.parentNode;\n" \
+                   "}\n" \
+                   "if (!form) { throw Error('Unable to find containing form element'); }\n" \
+                   "if (!form.ownerDocument) { throw Error('Unable to find owning document'); }\n" \
+                   "var e = form.ownerDocument.createEvent('Event');\n" \
+                   "e.initEvent('submit', true, true);\n" \
+                   "if (form.dispatchEvent(e)) { HTMLFormElement.prototype.submit.call(form) }\n"
+
+          execute_script(script, Element::ELEMENT_KEY => element)
+        rescue Error::JavascriptError
+          raise Error::UnsupportedOperationError, 'To submit an element, it must be nested inside a form element'
         end
 
         #
@@ -440,7 +444,7 @@ module Selenium
         end
 
         def element_attribute(element, name)
-          WebDriver.logger.info "Using script for :getAttribute of #{name}"
+          WebDriver.logger.debug "Using script for :getAttribute of #{name}", id: :script
           execute_atom :getAttribute, element, name
         end
 
@@ -500,7 +504,7 @@ module Selenium
         end
 
         def element_displayed?(element)
-          WebDriver.logger.info 'Using script for :isDisplayed'
+          WebDriver.logger.debug 'Using script for :isDisplayed', id: :script
           execute_atom :isDisplayed, element
         end
 
@@ -516,7 +520,7 @@ module Selenium
           Element.new self, element_id_from(execute(:get_active_element))
         end
 
-        alias_method :switch_to_active_element, :active_element
+        alias switch_to_active_element active_element
 
         def find_element_by(how, what, parent_ref = [])
           how, what = convert_locator(how, what)
@@ -559,6 +563,39 @@ module Selenium
           ShadowRoot.new self, shadow_root_id_from(id)
         end
 
+        #
+        # virtual-authenticator
+        #
+
+        def add_virtual_authenticator(options)
+          authenticator_id = execute :add_virtual_authenticator, {}, options.as_json
+          VirtualAuthenticator.new(self, authenticator_id, options)
+        end
+
+        def remove_virtual_authenticator(id)
+          execute :remove_virtual_authenticator, {authenticatorId: id}
+        end
+
+        def add_credential(credential, id)
+          execute :add_credential, {authenticatorId: id}, credential
+        end
+
+        def credentials(authenticator_id)
+          execute :get_credentials, {authenticatorId: authenticator_id}
+        end
+
+        def remove_credential(credential_id, authenticator_id)
+          execute :remove_credential, {credentialId: credential_id, authenticatorId: authenticator_id}
+        end
+
+        def remove_all_credentials(authenticator_id)
+          execute :remove_all_credentials, {authenticatorId: authenticator_id}
+        end
+
+        def user_verified(verified, authenticator_id)
+          execute :set_user_verified, {authenticatorId: authenticator_id}, {isUserVerified: verified}
+        end
+
         private
 
         #
@@ -579,7 +616,7 @@ module Selenium
             raise ArgumentError, "#{opts.inspect} invalid for #{command.inspect}"
           end
 
-          WebDriver.logger.info("-> #{verb.to_s.upcase} #{path}")
+          WebDriver.logger.debug("-> #{verb.to_s.upcase} #{path}", id: :command)
           http.call(verb, path, command_hash)['value']
         end
 
@@ -634,8 +671,6 @@ module Selenium
           when 'name'
             how = 'css selector'
             what = "*[name='#{escape_css(what.to_s)}']"
-          when 'tag name'
-            how = 'css selector'
           end
 
           if what.is_a?(Hash)
@@ -648,7 +683,7 @@ module Selenium
           [how, what]
         end
 
-        ESCAPE_CSS_REGEXP = /(['"\\#.:;,!?+<>=~*^$|%&@`{}\-\[\]()])/.freeze
+        ESCAPE_CSS_REGEXP = /(['"\\#.:;,!?+<>=~*^$|%&@`{}\-\[\]()])/
         UNICODE_CODE_POINT = 30
 
         # Escapes invalid characters in CSS selector.

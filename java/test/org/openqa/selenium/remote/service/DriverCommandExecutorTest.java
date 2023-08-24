@@ -28,27 +28,25 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.URL;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.remote.Command;
 import org.openqa.selenium.remote.DriverCommand;
 import org.openqa.selenium.remote.Response;
 import org.openqa.selenium.remote.SessionId;
-import org.openqa.selenium.testing.UnitTests;
 
-import java.io.IOException;
-import java.net.ConnectException;
-import java.net.URL;
-
-@Category(UnitTests.class)
-public class DriverCommandExecutorTest {
+@Tag("UnitTests")
+class DriverCommandExecutorTest {
 
   private static final String DRIVER_SERVER_URL = "http://a.base.url:3000";
 
   @Test
-  public void shouldStartDriverServerOnTheNewSession() throws IOException {
+  void shouldStartDriverServerOnTheNewSession() throws IOException {
     Command command = new Command(null, DriverCommand.NEW_SESSION(new ImmutableCapabilities()));
     Response response = new Response(new SessionId("foo"));
     DriverService service = mock(DriverService.class);
@@ -64,8 +62,9 @@ public class DriverCommandExecutorTest {
   }
 
   @Test
-  public void shouldNotStartDriverServerOnGetCommand() throws IOException {
-    Command command = new Command(new SessionId("some id"), DriverCommand.GET("https://example.com"));
+  void shouldNotStartDriverServerOnGetCommand() throws IOException {
+    Command command =
+        new Command(new SessionId("some id"), DriverCommand.GET("https://example.com"));
     Response response = new Response();
     DriverService service = mock(DriverService.class);
     when(service.getUrl()).thenReturn(new URL("http://a.base.url:3000"));
@@ -80,7 +79,7 @@ public class DriverCommandExecutorTest {
   }
 
   @Test
-  public void shouldStopDriverServerOnExceptionForTheNewSessionCommand() throws IOException {
+  void shouldStopDriverServerOnExceptionForTheNewSessionCommand() throws IOException {
     Command command = new Command(null, DriverCommand.NEW_SESSION(new ImmutableCapabilities()));
     DriverService service = mock(DriverService.class);
     when(service.getUrl()).thenReturn(new URL("http://a.base.url:3000"));
@@ -88,23 +87,22 @@ public class DriverCommandExecutorTest {
 
     DriverCommandExecutor executor = spy(new DriverCommandExecutor(service));
     doThrow(WebDriverException.class).when(executor).invokeExecute(any(Command.class));
-    assertThatExceptionOfType(WebDriverException.class)
-      .isThrownBy(() -> executor.execute(command));
+    assertThatExceptionOfType(WebDriverException.class).isThrownBy(() -> executor.execute(command));
 
     verify(service).start();
     verify(service).stop();
   }
 
   @Test
-  public void shouldNotStopDriverServerOnExceptionForGetCommand() throws IOException {
-    Command command = new Command(new SessionId("some id"), DriverCommand.GET("https://example.com"));
+  void shouldNotStopDriverServerOnExceptionForGetCommand() throws IOException {
+    Command command =
+        new Command(new SessionId("some id"), DriverCommand.GET("https://example.com"));
     DriverService service = mock(DriverService.class);
     when(service.getUrl()).thenReturn(new URL("http://a.base.url:3000"));
 
     DriverCommandExecutor executor = spy(new DriverCommandExecutor(service));
     doThrow(WebDriverException.class).when(executor).invokeExecute(any(Command.class));
-    assertThatExceptionOfType(WebDriverException.class)
-      .isThrownBy(() -> executor.execute(command));
+    assertThatExceptionOfType(WebDriverException.class).isThrownBy(() -> executor.execute(command));
 
     verify(service, never()).isRunning();
     verify(service, never()).start();
@@ -112,7 +110,8 @@ public class DriverCommandExecutorTest {
   }
 
   @Test
-  public void shouldNotStopDriverServerOnExceptionForTheNewSessionCommandIfItWasAlreadyRunning() throws IOException {
+  void shouldNotStopDriverServerOnExceptionForTheNewSessionCommandIfItWasAlreadyRunning()
+      throws IOException {
     Command command = new Command(null, DriverCommand.NEW_SESSION(new ImmutableCapabilities()));
     DriverService service = mock(DriverService.class);
     when(service.getUrl()).thenReturn(new URL("http://a.base.url:3000"));
@@ -120,25 +119,26 @@ public class DriverCommandExecutorTest {
 
     DriverCommandExecutor executor = spy(new DriverCommandExecutor(service));
     doThrow(WebDriverException.class).when(executor).invokeExecute(any(Command.class));
-    assertThatExceptionOfType(WebDriverException.class)
-      .isThrownBy(() -> executor.execute(command));
+    assertThatExceptionOfType(WebDriverException.class).isThrownBy(() -> executor.execute(command));
 
     verify(service).start();
     verify(service, never()).stop();
   }
 
   @Test
-  public void shouldNotStopDriverServerOnExceptionForTheNewSessionCommandIfItDied() throws IOException {
+  void shouldNotStopDriverServerOnExceptionForTheNewSessionCommandIfItDied() throws IOException {
     Command command = new Command(null, DriverCommand.NEW_SESSION(new ImmutableCapabilities()));
     DriverService service = mock(DriverService.class);
     when(service.getUrl()).thenReturn(new URL("http://a.base.url:3000"));
     when(service.isRunning()).thenReturn(false);
 
     DriverCommandExecutor executor = spy(new DriverCommandExecutor(service));
-    doThrow(new ConnectException("Connection refused")).when(executor).invokeExecute(any(Command.class));
+    doThrow(new ConnectException("Connection refused"))
+        .when(executor)
+        .invokeExecute(any(Command.class));
     assertThatExceptionOfType(WebDriverException.class)
-      .isThrownBy(() -> executor.execute(command))
-      .withMessageContaining("The driver server has unexpectedly died!");
+        .isThrownBy(() -> executor.execute(command))
+        .withMessageContaining("The driver server has unexpectedly died!");
 
     verify(service).start();
     verify(service, never()).stop();

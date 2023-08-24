@@ -21,7 +21,6 @@ module Selenium
   module WebDriver
     class DevTools
       class Request
-
         attr_accessor :url, :method, :headers, :post_data
         attr_reader :id
 
@@ -35,7 +34,7 @@ module Selenium
             id: id,
             url: params.dig('request', 'url'),
             method: params.dig('request', 'method'),
-            headers: params.dig('request', 'headers'),
+            headers: params.dig('request', 'headers').dup,
             post_data: params.dig('request', 'postData')
           )
         end
@@ -60,7 +59,6 @@ module Selenium
         def inspect
           %(#<#{self.class.name} @id="#{id}" @method="#{method}" @url="#{url}")
         end
-
       end # Request
     end # DevTools
   end # WebDriver

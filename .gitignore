@@ -73,10 +73,14 @@ py/selenium/webdriver/remote/isDisplayed.js
 py/docs/build/
 py/build/
 py/LICENSE
+py/selenium/webdriver/common/linux/
+py/selenium/webdriver/common/windows/
+py/selenium/webdriver/common/macos/
 selenium.egg-info/
 third_party/java/jetty/jetty-repacked.jar
 *.user
 *.cache
+dotnet/**/bin/
 obj/
 *.opensdf
 *.suo
@@ -98,18 +102,22 @@ GPATH
 GRTAGS
 GSYMS
 GTAGS
-Gemfile.lock
 /rb/.bundle
 /rb/.idea
+rb/bin/
+rb/lib/selenium/devtools/v1*
 .sonar/
 .idea/sonarIssues.xml
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/inspectionProfiles/Project_Default.xml
 .idea/misc.xml
 third_party/py/googlestorage/client_secrets.json
+.venv
 venv
 venv3
 py/.idea
+rust/target
+rust/.idea
 
 # Bazel stuff
 bazel-bin
@@ -121,3 +129,7 @@ bazel-testlogs
 /.vscode/
 /.scannerwork/
 /.bazelrc.local
+
+# Engflow
+*.crt
+*.key

@@ -17,8 +17,11 @@
 // </copyright>
 
 using System;
+using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 using OpenQA.Selenium.Internal;
 
 namespace OpenQA.Selenium.Safari
@@ -29,9 +32,6 @@ namespace OpenQA.Selenium.Safari
     public sealed class SafariDriverService : DriverService
     {
         private const string DefaultSafariDriverServiceExecutableName = "safaridriver";
-        private const string DefaultSafariDriverServiceExecutablePath = "/usr/bin";
-
-        private static readonly Uri SafariDriverDownloadUrl = new Uri("http://apple.com");
 
         private bool useLegacyProtocol;
 
@@ -42,7 +42,7 @@ namespace OpenQA.Selenium.Safari
         /// <param name="executableFileName">The file name of the SafariDriver executable.</param>
         /// <param name="port">The port on which the SafariDriver executable should listen.</param>
         private SafariDriverService(string executablePath, string executableFileName, int port)
-            : base(executablePath, port, executableFileName, SafariDriverDownloadUrl)
+            : base(executablePath, port, executableFileName)
         {
         }
 
@@ -55,6 +55,7 @@ namespace OpenQA.Selenium.Safari
         /// This is only valid for versions of the driver for Safari that target Safari 12
         /// or later, and will result in an error if used with prior versions of the driver.
         /// </remarks>
+        [Obsolete("Only w3c protocol is currently supported")]
         public bool UseLegacyProtocol
         {
             get { return this.useLegacyProtocol; }
@@ -110,47 +111,41 @@ namespace OpenQA.Selenium.Safari
             get
             {
                 bool isInitialized = false;
-                try
-                {
-                    // Since Firefox driver won't implement the /session end point (because
-                    // the W3C spec working group stupidly decided that it isn't necessary),
-                    // we'll attempt to poll for a different URL which has no side effects.
-                    // We've chosen to poll on the "quit" URL, passing in a nonexistent
-                    // session id.
-                    Uri serviceHealthUri = new Uri(this.ServiceUrl, new Uri("/session/FakeSessionIdForPollingPurposes", UriKind.Relative));
-                    HttpWebRequest request = HttpWebRequest.Create(serviceHealthUri) as HttpWebRequest;
-                    request.KeepAlive = false;
-                    request.Timeout = 5000;
-                    request.Method = "DELETE";
-                    HttpWebResponse response = request.GetResponse() as HttpWebResponse;
 
-                    // Checking the response from deleting a nonexistent session. Note that we are simply
-                    // checking that the HTTP status returned is a 200 status, and that the resposne has
-                    // the correct Content-Type header. A more sophisticated check would parse the JSON
-                    // response and validate its values. At the moment we do not do this more sophisticated
-                    // check.
-                    isInitialized = response.StatusCode == HttpStatusCode.OK && response.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase);
-                    response.Close();
-                }
-                catch (WebException ex)
+                Uri serviceHealthUri = new Uri(this.ServiceUrl, new Uri("/session/FakeSessionIdForPollingPurposes", UriKind.Relative));
+
+                // Since Firefox driver won't implement the /session end point (because
+                // the W3C spec working group stupidly decided that it isn't necessary),
+                // we'll attempt to poll for a different URL which has no side effects.
+                // We've chosen to poll on the "quit" URL, passing in a nonexistent
+                // session id.
+                using (var httpClient = new HttpClient())
                 {
-                    // Because the Firefox driver (incorrectly) does not allow quit on a
-                    // nonexistent session to succeed, this will throw a WebException,
-                    // which means we're reduced to using exception handling for flow control.
-                    // This situation is highly undesirable, and in fact is a horrible code
-                    // smell, but the implementation leaves us no choice. So we will check for
-                    // the known response code and content type header, just like we would for
-                    // the success case. Either way, a valid HTTP response instead of a socket
-                    // error would tell us that the HTTP server is responding to requests, which
-                    // is really what we want anyway.
-                    HttpWebResponse errorResponse = ex.Response as HttpWebResponse;
-                    if (errorResponse != null)
+                    httpClient.DefaultRequestHeaders.ConnectionClose = true;
+                    httpClient.Timeout = TimeSpan.FromSeconds(5);
+
+                    using (var httpRequest = new HttpRequestMessage(HttpMethod.Delete, serviceHealthUri))
                     {
-                        isInitialized = (errorResponse.StatusCode == HttpStatusCode.InternalServerError && errorResponse.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)) || (errorResponse.StatusCode == HttpStatusCode.NotFound);
-                    }
-                    else
-                    {
-                        Console.WriteLine(ex.Message);
+                        try
+                        {
+                            using (var httpResponse = Task.Run(async () => await httpClient.SendAsync(httpRequest)).GetAwaiter().GetResult())
+                            {
+                                isInitialized = (httpResponse.StatusCode == HttpStatusCode.OK
+                                        || httpResponse.StatusCode == HttpStatusCode.InternalServerError
+                                        || httpResponse.StatusCode == HttpStatusCode.NotFound)
+                                    && httpResponse.Content.Headers.ContentType.MediaType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase);
+                            }
+                        }
+
+                        // Checking the response from deleting a nonexistent session. Note that we are simply
+                        // checking that the HTTP status returned is a 200 status, and that the resposne has
+                        // the correct Content-Type header. A more sophisticated check would parse the JSON
+                        // response and validate its values. At the moment we do not do this more sophisticated
+                        // check.
+                        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException)
+                        {
+                            Console.WriteLine(ex);
+                        }
                     }
                 }
 
@@ -164,7 +159,18 @@ namespace OpenQA.Selenium.Safari
         /// <returns>A SafariDriverService that implements default settings.</returns>
         public static SafariDriverService CreateDefaultService()
         {
-            return CreateDefaultService(DefaultSafariDriverServiceExecutablePath);
+            return CreateDefaultService(new SafariOptions());
+        }
+
+        /// <summary>
+        /// Creates a default instance of the SafariDriverService.
+        /// </summary>
+        /// <param name="options">Browser options used to find the correct GeckoDriver binary.</param>
+        /// <returns>A SafariDriverService that implements default settings.</returns>
+        public static SafariDriverService CreateDefaultService(SafariOptions options)
+        {
+            string fullServicePath = DriverFinder.FullPath(options);
+            return CreateDefaultService(Path.GetDirectoryName(fullServicePath), Path.GetFileName(fullServicePath));
         }
 
         /// <summary>
@@ -174,6 +180,11 @@ namespace OpenQA.Selenium.Safari
         /// <returns>A SafariDriverService using a random port.</returns>
         public static SafariDriverService CreateDefaultService(string driverPath)
         {
+            if (File.Exists(driverPath))
+            {
+                driverPath = Path.GetDirectoryName(driverPath);
+            }
+
             return CreateDefaultService(driverPath, DefaultSafariDriverServiceExecutableName);
         }
 

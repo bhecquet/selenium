@@ -26,23 +26,22 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
 
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
+import java.util.ArrayList;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.testing.UnitTests;
 import org.openqa.selenium.virtualauthenticator.Credential;
 import org.openqa.selenium.virtualauthenticator.HasVirtualAuthenticator;
 import org.openqa.selenium.virtualauthenticator.VirtualAuthenticator;
 import org.openqa.selenium.virtualauthenticator.VirtualAuthenticatorOptions;
 
-import java.util.ArrayList;
-import java.util.function.Consumer;
-import java.util.function.Function;
-
-@Category(UnitTests.class)
-public class DecoratedVirtualAuthenticatorTest {
+@Tag("UnitTests")
+class DecoratedVirtualAuthenticatorTest {
 
   private static class Fixture {
+
     WebDriver originalDriver;
     WebDriver decoratedDriver;
     VirtualAuthenticator original;
@@ -50,12 +49,14 @@ public class DecoratedVirtualAuthenticatorTest {
 
     public Fixture() {
       original = mock(VirtualAuthenticator.class);
-      originalDriver = mock(
-        WebDriver.class, withSettings().extraInterfaces(HasVirtualAuthenticator.class));
-      when(((HasVirtualAuthenticator) originalDriver).addVirtualAuthenticator(any())).thenReturn(original);
+      originalDriver =
+          mock(WebDriver.class, withSettings().extraInterfaces(HasVirtualAuthenticator.class));
+      when(((HasVirtualAuthenticator) originalDriver).addVirtualAuthenticator(any()))
+          .thenReturn(original);
       decoratedDriver = new WebDriverDecorator().decorate(originalDriver);
-      decorated = ((HasVirtualAuthenticator) decoratedDriver)
-        .addVirtualAuthenticator(new VirtualAuthenticatorOptions());
+      decorated =
+          ((HasVirtualAuthenticator) decoratedDriver)
+              .addVirtualAuthenticator(new VirtualAuthenticatorOptions());
     }
   }
 
@@ -75,38 +76,38 @@ public class DecoratedVirtualAuthenticatorTest {
   }
 
   @Test
-  public void getId() {
+  void getId() {
     verifyFunction(VirtualAuthenticator::getId, "test");
   }
 
   @Test
-  public void addCredential() {
+  void addCredential() {
     Credential credential = mock(Credential.class);
     verifyFunction($ -> $.addCredential(credential));
   }
 
   @Test
-  public void getCredentials() {
+  void getCredentials() {
     verifyFunction(VirtualAuthenticator::getCredentials, new ArrayList<>());
   }
 
   @Test
-  public void removeCredentialByByteArray() {
+  void removeCredentialByByteArray() {
     verifyFunction($ -> $.removeCredential("test".getBytes()));
   }
 
   @Test
-  public void removeCredentialByString() {
+  void removeCredentialByString() {
     verifyFunction($ -> $.removeCredential("test"));
   }
 
   @Test
-  public void removeAllCredentials() {
+  void removeAllCredentials() {
     verifyFunction(VirtualAuthenticator::removeAllCredentials);
   }
 
   @Test
-  public void setUserVerified() {
+  void setUserVerified() {
     verifyFunction($ -> $.setUserVerified(true));
   }
 }

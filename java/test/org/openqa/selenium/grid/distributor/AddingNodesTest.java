@@ -18,15 +18,26 @@
 package org.openqa.selenium.grid.distributor;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openqa.selenium.grid.data.Availability.UP;
 import static org.openqa.selenium.remote.Dialect.W3C;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-
-import org.junit.Before;
-import org.junit.Test;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.NoSuchSessionException;
@@ -67,23 +78,11 @@ import org.openqa.selenium.remote.tracing.Tracer;
 import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.Wait;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
-import java.util.function.Function;
-
-public class AddingNodesTest {
+class AddingNodesTest {
 
   private static final Capabilities CAPS = new ImmutableCapabilities("cheese", "gouda");
   private static final Secret registrationSecret = new Secret("caerphilly");
+  private static final int newSessionThreadPoolSize = Runtime.getRuntime().availableProcessors();
 
   private Distributor distributor;
   private Tracer tracer;
@@ -95,7 +94,7 @@ public class AddingNodesTest {
   private LocalSessionMap sessions;
   private NewSessionQueue queue;
 
-  @Before
+  @BeforeEach
   public void setUpDistributor() throws MalformedURLException {
     tracer = DefaultTestTracer.createTracer();
     bus = new GuavaEventBus();
@@ -104,44 +103,50 @@ public class AddingNodesTest {
     externalUrl = new URL("http://example.com");
 
     sessions = new LocalSessionMap(tracer, bus);
-    queue = new LocalNewSessionQueue(
-      tracer,
-      bus,
-      new DefaultSlotMatcher(),
-      Duration.ofSeconds(2),
-      Duration.ofSeconds(2),
-      registrationSecret);
+    queue =
+        new LocalNewSessionQueue(
+            tracer,
+            new DefaultSlotMatcher(),
+            Duration.ofSeconds(2),
+            Duration.ofSeconds(2),
+            registrationSecret,
+            5);
 
     stereotype = new ImmutableCapabilities("browserName", "gouda");
 
-    wait = new FluentWait<>(
-      new Object()).ignoring(Throwable.class).withTimeout(Duration.ofSeconds(2));
+    wait =
+        new FluentWait<>(new Object()).ignoring(Throwable.class).withTimeout(Duration.ofSeconds(2));
   }
 
   @Test
-  public void shouldBeAbleToRegisterALocalNode() throws URISyntaxException {
+  void shouldBeAbleToRegisterALocalNode() throws URISyntaxException {
     URI sessionUri = new URI("http://example:1234");
-    Node node = LocalNode
-      .builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
-        .add(
-          CAPS,
-          new TestSessionFactory(
-            (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
-        .build();
+    Node node =
+        LocalNode.builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
+            .add(
+                CAPS,
+                new TestSessionFactory(
+                    (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
+            .build();
 
-    Distributor local = new LocalDistributor(
-      tracer,
-      bus,
-      new PassthroughHttpClient.Factory(node),
-      sessions,
-      queue,
-      new DefaultSlotSelector(),
-      registrationSecret,
-      Duration.ofMinutes(5),
-      false,
-      Duration.ofSeconds(5));
+    Distributor local =
+        new LocalDistributor(
+            tracer,
+            bus,
+            new PassthroughHttpClient.Factory(node),
+            sessions,
+            queue,
+            new DefaultSlotSelector(),
+            registrationSecret,
+            Duration.ofMinutes(5),
+            false,
+            Duration.ofSeconds(5),
+            newSessionThreadPoolSize,
+            new DefaultSlotMatcher());
 
-    distributor = new RemoteDistributor(tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
+    distributor =
+        new RemoteDistributor(
+            tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
 
     distributor.add(node);
 
@@ -152,171 +157,202 @@ public class AddingNodesTest {
   }
 
   @Test
-  public void shouldBeAbleToRegisterACustomNode() throws URISyntaxException {
+  void shouldBeAbleToRegisterACustomNode() throws URISyntaxException {
     URI sessionUri = new URI("http://example:1234");
-    Node node = new CustomNode(
-        bus,
-        new NodeId(UUID.randomUUID()),
-        externalUrl.toURI(),
-        c -> new Session(
-          new SessionId(UUID.randomUUID()), sessionUri, stereotype, c, Instant.now()));
+    Node node =
+        new CustomNode(
+            bus,
+            new NodeId(UUID.randomUUID()),
+            externalUrl.toURI(),
+            c ->
+                new Session(
+                    new SessionId(UUID.randomUUID()), sessionUri, stereotype, c, Instant.now()));
 
-    Distributor local = new LocalDistributor(
-      tracer,
-      bus,
-      new PassthroughHttpClient.Factory(node),
-      sessions,
-      queue,
-      new DefaultSlotSelector(),
-      registrationSecret,
-      Duration.ofMinutes(5),
-      false,
-      Duration.ofSeconds(5));
+    try (LocalDistributor local =
+        new LocalDistributor(
+            tracer,
+            bus,
+            new PassthroughHttpClient.Factory(node),
+            sessions,
+            queue,
+            new DefaultSlotSelector(),
+            registrationSecret,
+            Duration.ofMinutes(5),
+            false,
+            Duration.ofSeconds(5),
+            newSessionThreadPoolSize,
+            new DefaultSlotMatcher())) {
 
-    distributor = new RemoteDistributor(tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
+      distributor =
+          new RemoteDistributor(
+              tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
 
-    distributor.add(node);
+      distributor.add(node);
 
-    wait.until(obj -> distributor.getStatus().hasCapacity());
+      wait.until(obj -> distributor.getStatus().hasCapacity());
 
-    NodeStatus status = getOnlyElement(distributor.getStatus().getNodes());
-    assertEquals(1, getStereotypes(status).get(CAPS).intValue());
+      NodeStatus status = getOnlyElement(distributor.getStatus().getNodes());
+      assertEquals(1, getStereotypes(status).get(CAPS).intValue());
+    }
   }
 
   @Test
-  public void shouldBeAbleToRegisterNodesByListeningForEvents() throws URISyntaxException {
+  void shouldBeAbleToRegisterNodesByListeningForEvents() throws URISyntaxException {
     URI sessionUri = new URI("http://example:1234");
-    Node node = LocalNode
-      .builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
-        .add(
-          CAPS,
-          new TestSessionFactory(
-            (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
-        .build();
+    Node node =
+        LocalNode.builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
+            .add(
+                CAPS,
+                new TestSessionFactory(
+                    (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
+            .build();
 
-    Distributor local = new LocalDistributor(
-      tracer,
-      bus,
-      new PassthroughHttpClient.Factory(node),
-      sessions,
-      queue,
-      new DefaultSlotSelector(),
-      registrationSecret,
-      Duration.ofMinutes(5),
-      false,
-      Duration.ofSeconds(5));
+    try (LocalDistributor local =
+        new LocalDistributor(
+            tracer,
+            bus,
+            new PassthroughHttpClient.Factory(node),
+            sessions,
+            queue,
+            new DefaultSlotSelector(),
+            registrationSecret,
+            Duration.ofMinutes(5),
+            false,
+            Duration.ofSeconds(5),
+            newSessionThreadPoolSize,
+            new DefaultSlotMatcher())) {
 
-    distributor = new RemoteDistributor(tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
+      distributor =
+          new RemoteDistributor(
+              tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
 
-    bus.fire(new NodeStatusEvent(node.getStatus()));
+      bus.fire(new NodeStatusEvent(node.getStatus()));
 
-    wait.until(obj -> distributor.getStatus().hasCapacity());
+      wait.until(obj -> distributor.getStatus().hasCapacity());
 
-    NodeStatus status = getOnlyElement(distributor.getStatus().getNodes());
-    assertEquals(1, getStereotypes(status).get(CAPS).intValue());
+      NodeStatus status = getOnlyElement(distributor.getStatus().getNodes());
+      assertEquals(1, getStereotypes(status).get(CAPS).intValue());
+    }
   }
 
   @Test
-  public void shouldKeepOnlyOneNodeWhenTwoRegistrationsHaveTheSameUriByListeningForEvents()
-    throws URISyntaxException {
+  void shouldKeepOnlyOneNodeWhenTwoRegistrationsHaveTheSameUriByListeningForEvents()
+      throws URISyntaxException {
     URI sessionUri = new URI("http://example:1234");
-    Node firstNode = LocalNode
-      .builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
-      .add(
-        CAPS,
-        new TestSessionFactory(
-          (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
-      .build();
-    Node secondNode = LocalNode
-      .builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
-      .add(
-        CAPS,
-        new TestSessionFactory(
-          (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
-      .build();
+    Node firstNode =
+        LocalNode.builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
+            .add(
+                CAPS,
+                new TestSessionFactory(
+                    (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
+            .build();
+    Node secondNode =
+        LocalNode.builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
+            .add(
+                CAPS,
+                new TestSessionFactory(
+                    (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
+            .build();
     handler.addHandler(firstNode);
     handler.addHandler(secondNode);
 
-    Distributor local = new LocalDistributor(
-      tracer,
-      bus,
-      new PassthroughHttpClient.Factory(handler),
-      sessions,
-      queue,
-      new DefaultSlotSelector(),
-      registrationSecret,
-      Duration.ofMinutes(5),
-      false,
-      Duration.ofSeconds(5));
+    try (LocalDistributor local =
+        new LocalDistributor(
+            tracer,
+            bus,
+            new PassthroughHttpClient.Factory(handler),
+            sessions,
+            queue,
+            new DefaultSlotSelector(),
+            registrationSecret,
+            Duration.ofMinutes(5),
+            false,
+            Duration.ofSeconds(5),
+            newSessionThreadPoolSize,
+            new DefaultSlotMatcher())) {
 
-    distributor = new RemoteDistributor(tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
+      distributor =
+          new RemoteDistributor(
+              tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
 
-    bus.fire(new NodeStatusEvent(firstNode.getStatus()));
-    bus.fire(new NodeStatusEvent(secondNode.getStatus()));
+      bus.fire(new NodeStatusEvent(firstNode.getStatus()));
+      bus.fire(new NodeStatusEvent(secondNode.getStatus()));
 
-    wait.until(obj -> distributor.getStatus());
+      wait.until(obj -> distributor.getStatus());
 
-    Set<NodeStatus> nodes = distributor.getStatus().getNodes();
+      Set<NodeStatus> nodes = distributor.getStatus().getNodes();
 
-    assertEquals(1, nodes.size());
+      assertEquals(1, nodes.size());
+    }
   }
 
   @Test
-  public void distributorShouldUpdateStateOfExistingNodeWhenNodePublishesStateChange()
+  void distributorShouldUpdateStateOfExistingNodeWhenNodePublishesStateChange()
       throws URISyntaxException {
     URI sessionUri = new URI("http://example:1234");
-    Node node = LocalNode
-      .builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
-        .add(
-          CAPS,
-          new TestSessionFactory(
-            (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
-        .build();
+    Node node =
+        LocalNode.builder(tracer, bus, externalUrl.toURI(), externalUrl.toURI(), registrationSecret)
+            .add(
+                CAPS,
+                new TestSessionFactory(
+                    (id, caps) -> new Session(id, sessionUri, stereotype, caps, Instant.now())))
+            .build();
 
-    Distributor local = new LocalDistributor(
-      tracer,
-      bus,
-      new PassthroughHttpClient.Factory(node),
-      sessions,
-      queue,
-      new DefaultSlotSelector(),
-      registrationSecret,
-      Duration.ofMinutes(5),
-      false,
-      Duration.ofSeconds(5));
+    try (LocalDistributor local =
+        new LocalDistributor(
+            tracer,
+            bus,
+            new PassthroughHttpClient.Factory(node),
+            sessions,
+            queue,
+            new DefaultSlotSelector(),
+            registrationSecret,
+            Duration.ofMinutes(5),
+            false,
+            Duration.ofSeconds(5),
+            newSessionThreadPoolSize,
+            new DefaultSlotMatcher())) {
 
-    distributor = new RemoteDistributor(tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
+      distributor =
+          new RemoteDistributor(
+              tracer, new PassthroughHttpClient.Factory(local), externalUrl, registrationSecret);
 
-    bus.fire(new NodeStatusEvent(node.getStatus()));
+      bus.fire(new NodeStatusEvent(node.getStatus()));
 
-    // Start empty
-    wait.until(obj -> distributor.getStatus().hasCapacity());
+      // Start empty
+      wait.until(obj -> distributor.getStatus().hasCapacity());
 
-    NodeStatus nodeStatus = getOnlyElement(distributor.getStatus().getNodes());
-    assertEquals(1, getStereotypes(nodeStatus).get(CAPS).intValue());
+      NodeStatus nodeStatus = getOnlyElement(distributor.getStatus().getNodes());
+      assertEquals(1, getStereotypes(nodeStatus).get(CAPS).intValue());
 
-    // Craft a status that makes it look like the node is busy, and post it on the bus.
-    NodeStatus status = node.getStatus();
-    NodeStatus crafted = new NodeStatus(
-      status.getNodeId(),
-      status.getExternalUri(),
-      status.getMaxSessionCount(),
-      ImmutableSet.of(
-        new Slot(
-          new SlotId(status.getNodeId(), UUID.randomUUID()),
-          CAPS,
-          Instant.now(),
-          new Session(
-            new SessionId(UUID.randomUUID()), sessionUri, CAPS, CAPS, Instant.now()))),
-      UP,
-      Duration.ofSeconds(10),
-      status.getVersion(),
-      status.getOsInfo());
+      // Craft a status that makes it look like the node is busy, and post it on the bus.
+      NodeStatus status = node.getStatus();
+      NodeStatus crafted =
+          new NodeStatus(
+              status.getNodeId(),
+              status.getExternalUri(),
+              status.getMaxSessionCount(),
+              ImmutableSet.of(
+                  new Slot(
+                      new SlotId(status.getNodeId(), UUID.randomUUID()),
+                      CAPS,
+                      Instant.now(),
+                      new Session(
+                          new SessionId(UUID.randomUUID()),
+                          sessionUri,
+                          CAPS,
+                          CAPS,
+                          Instant.now()))),
+              UP,
+              Duration.ofSeconds(10),
+              status.getVersion(),
+              status.getOsInfo());
 
-    bus.fire(new NodeStatusEvent(crafted));
+      bus.fire(new NodeStatusEvent(crafted));
 
-    // We claimed the only slot is filled. Life is good.
-    wait.until(obj -> !distributor.getStatus().hasCapacity());
+      // We claimed the only slot is filled. Life is good.
+      wait.until(obj -> !distributor.getStatus().hasCapacity());
+    }
   }
 
   private Map<Capabilities, Integer> getStereotypes(NodeStatus status) {
@@ -338,10 +374,7 @@ public class AddingNodesTest {
     private Session running;
 
     protected CustomNode(
-        EventBus bus,
-        NodeId nodeId,
-        URI uri,
-        Function<Capabilities, Session> factory) {
+        EventBus bus, NodeId nodeId, URI uri, Function<Capabilities, Session> factory) {
       super(DefaultTestTracer.createTracer(), nodeId, uri, registrationSecret);
 
       this.bus = bus;
@@ -354,7 +387,8 @@ public class AddingNodesTest {
     }
 
     @Override
-    public Either<WebDriverException, CreateSessionResponse> newSession(CreateSessionRequest sessionRequest) {
+    public Either<WebDriverException, CreateSessionResponse> newSession(
+        CreateSessionRequest sessionRequest) {
       Objects.requireNonNull(sessionRequest);
 
       if (running != null) {
@@ -363,9 +397,8 @@ public class AddingNodesTest {
       Session session = factory.apply(sessionRequest.getDesiredCapabilities());
       running = session;
       return Either.right(
-        new CreateSessionResponse(
-          session,
-          CapabilityResponseEncoder.getEncoder(W3C).apply(session)));
+          new CreateSessionResponse(
+              session, CapabilityResponseEncoder.getEncoder(W3C).apply(session)));
     }
 
     @Override
@@ -376,6 +409,11 @@ public class AddingNodesTest {
     @Override
     public HttpResponse uploadFile(HttpRequest req, SessionId id) {
       throw new UnsupportedOperationException("uploadFile");
+    }
+
+    @Override
+    public HttpResponse downloadFile(HttpRequest req, SessionId id) {
+      throw new UnsupportedOperationException("downloadFile");
     }
 
     @Override
@@ -410,31 +448,28 @@ public class AddingNodesTest {
       Session sess = null;
       if (running != null) {
         try {
-          sess = new Session(
-            running.getId(),
-            new URI("http://localhost:14568"),
-            CAPS,
-            running.getCapabilities(),
-            Instant.now());
+          sess =
+              new Session(
+                  running.getId(),
+                  new URI("http://localhost:14568"),
+                  CAPS,
+                  running.getCapabilities(),
+                  Instant.now());
         } catch (URISyntaxException e) {
           throw new RuntimeException(e);
         }
       }
 
       return new NodeStatus(
-        getId(),
-        getUri(),
-        1,
-        ImmutableSet.of(
-          new Slot(
-            new SlotId(getId(), UUID.randomUUID()),
-            CAPS,
-            Instant.now(),
-            sess)),
-        UP,
-        Duration.ofSeconds(10),
-        getNodeVersion(),
-        getOsInfo());
+          getId(),
+          getUri(),
+          1,
+          ImmutableSet.of(
+              new Slot(new SlotId(getId(), UUID.randomUUID()), CAPS, Instant.now(), sess)),
+          UP,
+          Duration.ofSeconds(10),
+          getNodeVersion(),
+          getOsInfo());
     }
 
     @Override
@@ -443,8 +478,6 @@ public class AddingNodesTest {
     }
 
     @Override
-    public void drain() {
-    }
+    public void drain() {}
   }
-
 }

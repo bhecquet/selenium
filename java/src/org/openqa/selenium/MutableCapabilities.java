@@ -17,26 +17,23 @@
 
 package org.openqa.selenium;
 
-import org.openqa.selenium.internal.Require;
-
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import org.openqa.selenium.internal.Require;
 
 public class MutableCapabilities implements Capabilities {
 
   private static final Set<String> OPTION_KEYS;
+
   static {
     HashSet<String> keys = new HashSet<>();
-    keys.add("chromeOptions");
-    keys.add("edgeOptions");
     keys.add("goog:chromeOptions");
+    keys.add("ms:edgeOptions");
     keys.add("moz:firefoxOptions");
-    keys.add("operaOptions");
     keys.add("se:ieOptions");
-    keys.add("safari.options");
     OPTION_KEYS = Collections.unmodifiableSet(keys);
   }
 
@@ -51,17 +48,17 @@ public class MutableCapabilities implements Capabilities {
   }
 
   public MutableCapabilities(Map<String, ?> capabilities) {
-    capabilities.forEach((key, value) -> {
-      if (value != null) {
-        setCapability(key, value);
-      }
-    });
+    capabilities.forEach(
+        (key, value) -> {
+          if (value != null) {
+            setCapability(key, value);
+          }
+        });
   }
 
   /**
-   * Merge two {@link Capabilities} together and return the union of the two as a new
-   * {@link Capabilities} instance. Capabilities from {@code other} will override those in
-   * {@code this}.
+   * Merge two {@link Capabilities} together and return the union of the two as a new {@link
+   * Capabilities} instance. Capabilities from {@code other} will override those in {@code this}.
    */
   @Override
   public MutableCapabilities merge(Capabilities other) {

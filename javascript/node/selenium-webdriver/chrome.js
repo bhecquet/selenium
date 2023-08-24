@@ -130,17 +130,9 @@
 const io = require('./io')
 const { Browser } = require('./lib/capabilities')
 const chromium = require('./chromium')
-
-/**
- * Name of the ChromeDriver executable.
- * @type {string}
- * @const
- */
-const CHROMEDRIVER_EXE =
-  process.platform === 'win32' ? 'chromedriver.exe' : 'chromedriver'
+const CHROME_CAPABILITY_KEY = 'goog:chromeOptions'
 
 /** @type {remote.DriverService} */
-let defaultService = null
 
 /**
  * Creates {@link selenium-webdriver/remote.DriverService} instances that manage
@@ -151,21 +143,13 @@ class ServiceBuilder extends chromium.ServiceBuilder {
   /**
    * @param {string=} opt_exe Path to the server executable to use. If omitted,
    *     the builder will attempt to locate the chromedriver on the current
-   *     PATH.
+   *     PATH. If the chromedriver is not available in path, selenium-manager will
+   *     download the chromedriver
    * @throws {Error} If provided executable does not exist, or the chromedriver
    *     cannot be found on the PATH.
    */
   constructor(opt_exe) {
-    let exe = opt_exe || locateSynchronously()
-    if (!exe) {
-      throw Error(
-        `The ChromeDriver could not be found on the current PATH. Please ` +
-          `download the latest version of the ChromeDriver from ` +
-          `http://chromedriver.storage.googleapis.com/index.html and ensure ` +
-          `it can be found on your PATH.`
-      )
-    }
-    super(exe)
+    super(opt_exe)
   }
 }
 
@@ -237,62 +221,25 @@ class Driver extends chromium.Driver {
   static createSession(opt_config, opt_serviceExecutor) {
     let caps = opt_config || new Options()
     return /** @type {!Driver} */ (
-      super.createSession(caps, opt_serviceExecutor)
+      super.createSession(caps, opt_serviceExecutor, 'goog', CHROME_CAPABILITY_KEY)
     )
   }
-}
 
-/**
- * _Synchronously_ attempts to locate the chromedriver executable on the current
- * system.
- *
- * @return {?string} the located executable, or `null`.
- */
-function locateSynchronously() {
-  return io.findInPath(CHROMEDRIVER_EXE, true)
-}
-
-/**
- * Sets the default service to use for new ChromeDriver instances.
- * @param {!remote.DriverService} service The service to use.
- * @throws {Error} If the default service is currently running.
- */
-function setDefaultService(service) {
-  if (defaultService && defaultService.isRunning()) {
-    throw Error(
-      `The previously configured ChromeDriver service is still running. ` +
-        `You must shut it down before you may adjust its configuration.`
-    )
+  /**
+   * returns new instance chrome driver service
+   * @returns {remote.DriverService}
+   */
+  static getDefaultService() {
+    return new ServiceBuilder().build()
   }
-  defaultService = service
 }
 
-/**
- * Returns the default ChromeDriver service. If such a service has not been
- * configured, one will be constructed using the default configuration for
- * a ChromeDriver executable found on the system PATH.
- * @return {!remote.DriverService} The default ChromeDriver service.
- */
-function getDefaultService() {
-  if (!defaultService) {
-    defaultService = new ServiceBuilder().build()
-  }
-  return defaultService
-}
-
-Options.prototype.CAPABILITY_KEY = 'goog:chromeOptions'
+Options.prototype.CAPABILITY_KEY = CHROME_CAPABILITY_KEY
 Options.prototype.BROWSER_NAME_VALUE = Browser.CHROME
-Driver.getDefaultService = getDefaultService
-Driver.prototype.VENDOR_COMMAND_PREFIX = 'goog'
 
 // PUBLIC API
-
 module.exports = {
-  Driver: Driver,
+  Driver,
   Options,
-  ServiceBuilder ,
-  getDefaultService,
-  setDefaultService,
-  locateSynchronously
+  ServiceBuilder,
 }
-

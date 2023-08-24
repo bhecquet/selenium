@@ -15,12 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import red from '@material-ui/core/colors/red'
-import { createMuiTheme, Theme } from '@material-ui/core/styles'
+import { createTheme, Theme } from '@mui/material/styles'
 import typography from './typography'
 
 // A custom theme for this app
-const theme: Theme = createMuiTheme({
+const theme: Theme = createTheme({
   palette: {
     primary: {
       main: '#615E9B'
@@ -29,7 +28,7 @@ const theme: Theme = createMuiTheme({
       main: '#F7F8F8'
     },
     error: {
-      main: red.A400
+      main: '#FF1744'
     },
     background: {
       default: '#F7F8F8'

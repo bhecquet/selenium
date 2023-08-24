@@ -26,6 +26,7 @@ import static org.openqa.selenium.json.Json.MAP_TYPE;
 import static org.openqa.selenium.remote.DriverCommand.ADD_COOKIE;
 import static org.openqa.selenium.remote.DriverCommand.ADD_CREDENTIAL;
 import static org.openqa.selenium.remote.DriverCommand.ADD_VIRTUAL_AUTHENTICATOR;
+import static org.openqa.selenium.remote.DriverCommand.CANCEL_DIALOG;
 import static org.openqa.selenium.remote.DriverCommand.CLEAR_ELEMENT;
 import static org.openqa.selenium.remote.DriverCommand.CLICK_ELEMENT;
 import static org.openqa.selenium.remote.DriverCommand.CLOSE;
@@ -39,6 +40,7 @@ import static org.openqa.selenium.remote.DriverCommand.FIND_ELEMENT;
 import static org.openqa.selenium.remote.DriverCommand.FIND_ELEMENTS;
 import static org.openqa.selenium.remote.DriverCommand.FULLSCREEN_CURRENT_WINDOW;
 import static org.openqa.selenium.remote.DriverCommand.GET;
+import static org.openqa.selenium.remote.DriverCommand.GET_ACCOUNTS;
 import static org.openqa.selenium.remote.DriverCommand.GET_ALL_COOKIES;
 import static org.openqa.selenium.remote.DriverCommand.GET_ALL_SESSIONS;
 import static org.openqa.selenium.remote.DriverCommand.GET_APP_CACHE_STATUS;
@@ -55,6 +57,8 @@ import static org.openqa.selenium.remote.DriverCommand.GET_ELEMENT_SIZE;
 import static org.openqa.selenium.remote.DriverCommand.GET_ELEMENT_TAG_NAME;
 import static org.openqa.selenium.remote.DriverCommand.GET_ELEMENT_TEXT;
 import static org.openqa.selenium.remote.DriverCommand.GET_ELEMENT_VALUE_OF_CSS_PROPERTY;
+import static org.openqa.selenium.remote.DriverCommand.GET_FEDCM_DIALOG_TYPE;
+import static org.openqa.selenium.remote.DriverCommand.GET_FEDCM_TITLE;
 import static org.openqa.selenium.remote.DriverCommand.GET_LOCATION;
 import static org.openqa.selenium.remote.DriverCommand.GET_LOG;
 import static org.openqa.selenium.remote.DriverCommand.GET_NETWORK_CONNECTION;
@@ -65,11 +69,6 @@ import static org.openqa.selenium.remote.DriverCommand.GET_TIMEOUTS;
 import static org.openqa.selenium.remote.DriverCommand.GET_TITLE;
 import static org.openqa.selenium.remote.DriverCommand.GO_BACK;
 import static org.openqa.selenium.remote.DriverCommand.GO_FORWARD;
-import static org.openqa.selenium.remote.DriverCommand.IME_ACTIVATE_ENGINE;
-import static org.openqa.selenium.remote.DriverCommand.IME_DEACTIVATE;
-import static org.openqa.selenium.remote.DriverCommand.IME_GET_ACTIVE_ENGINE;
-import static org.openqa.selenium.remote.DriverCommand.IME_GET_AVAILABLE_ENGINES;
-import static org.openqa.selenium.remote.DriverCommand.IME_IS_ACTIVATED;
 import static org.openqa.selenium.remote.DriverCommand.IMPLICITLY_WAIT;
 import static org.openqa.selenium.remote.DriverCommand.IS_BROWSER_ONLINE;
 import static org.openqa.selenium.remote.DriverCommand.IS_ELEMENT_ENABLED;
@@ -80,10 +79,13 @@ import static org.openqa.selenium.remote.DriverCommand.REFRESH;
 import static org.openqa.selenium.remote.DriverCommand.REMOVE_ALL_CREDENTIALS;
 import static org.openqa.selenium.remote.DriverCommand.REMOVE_CREDENTIAL;
 import static org.openqa.selenium.remote.DriverCommand.REMOVE_VIRTUAL_AUTHENTICATOR;
+import static org.openqa.selenium.remote.DriverCommand.RESET_COOLDOWN;
 import static org.openqa.selenium.remote.DriverCommand.SCREENSHOT;
+import static org.openqa.selenium.remote.DriverCommand.SELECT_ACCOUNT;
 import static org.openqa.selenium.remote.DriverCommand.SEND_KEYS_TO_ELEMENT;
 import static org.openqa.selenium.remote.DriverCommand.SET_ALERT_CREDENTIALS;
 import static org.openqa.selenium.remote.DriverCommand.SET_BROWSER_ONLINE;
+import static org.openqa.selenium.remote.DriverCommand.SET_DELAY_ENABLED;
 import static org.openqa.selenium.remote.DriverCommand.SET_LOCATION;
 import static org.openqa.selenium.remote.DriverCommand.SET_NETWORK_CONNECTION;
 import static org.openqa.selenium.remote.DriverCommand.SET_SCREEN_ORIENTATION;
@@ -104,7 +106,9 @@ import com.google.common.base.Objects;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
-
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.openqa.selenium.UnsupportedCommandException;
 import org.openqa.selenium.internal.Require;
 import org.openqa.selenium.json.Json;
@@ -114,10 +118,6 @@ import org.openqa.selenium.remote.CommandCodec;
 import org.openqa.selenium.remote.SessionId;
 import org.openqa.selenium.remote.http.HttpMethod;
 import org.openqa.selenium.remote.http.HttpRequest;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A command codec that adheres to the W3C's WebDriver wire protocol.
@@ -210,13 +210,6 @@ public abstract class AbstractHttpCommandCodec implements CommandCodec<HttpReque
     defineCommand(GET_SCREEN_ROTATION, get(sessionId + "/rotation"));
     defineCommand(SET_SCREEN_ROTATION, post(sessionId + "/rotation"));
 
-    String ime = sessionId + "/ime";
-    defineCommand(IME_GET_AVAILABLE_ENGINES, get(ime + "/available_engines"));
-    defineCommand(IME_GET_ACTIVE_ENGINE, get(ime + "/active_engine"));
-    defineCommand(IME_IS_ACTIVATED, get(ime + "/activated"));
-    defineCommand(IME_DEACTIVATE, post(ime + "/deactivate"));
-    defineCommand(IME_ACTIVATE_ENGINE, post(ime + "/activate"));
-
     // Mobile Spec
     defineCommand(GET_NETWORK_CONNECTION, get(sessionId + "/network_connection"));
     defineCommand(SET_NETWORK_CONNECTION, post(sessionId + "/network_connection"));
@@ -234,6 +227,28 @@ public abstract class AbstractHttpCommandCodec implements CommandCodec<HttpReque
     defineCommand(REMOVE_CREDENTIAL, delete(webauthnId + "/credentials/:credentialId"));
     defineCommand(REMOVE_ALL_CREDENTIALS, delete(webauthnId + "/credentials"));
     defineCommand(SET_USER_VERIFIED, post(webauthnId + "/uv"));
+
+    // Federated Credential Management API
+    String fedcm = sessionId + "/fedcm";
+    defineCommand(CANCEL_DIALOG, post(fedcm + "/canceldialog"));
+    defineCommand(SELECT_ACCOUNT, post(fedcm + "/selectaccount"));
+    defineCommand(GET_ACCOUNTS, get(fedcm + "/accountlist"));
+    defineCommand(GET_FEDCM_TITLE, get(fedcm + "/gettitle"));
+    defineCommand(GET_FEDCM_DIALOG_TYPE, get(fedcm + "/getdialogtype"));
+    defineCommand(SET_DELAY_ENABLED, post(fedcm + "/setdelayenabled"));
+    defineCommand(RESET_COOLDOWN, post(fedcm + "/resetCooldown"));
+  }
+
+  protected static CommandSpec delete(String path) {
+    return new CommandSpec(HttpMethod.DELETE, path);
+  }
+
+  protected static CommandSpec get(String path) {
+    return new CommandSpec(HttpMethod.GET, path);
+  }
+
+  protected static CommandSpec post(String path) {
+    return new CommandSpec(HttpMethod.POST, path);
   }
 
   @Override
@@ -255,7 +270,6 @@ public abstract class AbstractHttpCommandCodec implements CommandCodec<HttpReque
     HttpRequest request = new HttpRequest(spec.method, uri);
 
     if (HttpMethod.POST == spec.method) {
-
       String content = json.toJson(parameters);
       byte[] data = content.getBytes(UTF_8);
 
@@ -271,12 +285,12 @@ public abstract class AbstractHttpCommandCodec implements CommandCodec<HttpReque
     return request;
   }
 
-  protected abstract Map<String,?> amendParameters(String name, Map<String, ?> parameters);
+  protected abstract Map<String, ?> amendParameters(String name, Map<String, ?> parameters);
 
   @Override
   public Command decode(final HttpRequest encodedCommand) {
-    final String path = Strings.isNullOrEmpty(encodedCommand.getUri())
-                        ? "/" : encodedCommand.getUri();
+    final String path =
+        Strings.isNullOrEmpty(encodedCommand.getUri()) ? "/" : encodedCommand.getUri();
     final ImmutableList<String> parts = ImmutableList.copyOf(PATH_SPLITTER.split(path));
     int minPathLength = Integer.MAX_VALUE;
     CommandSpec spec = null;
@@ -317,9 +331,9 @@ public abstract class AbstractHttpCommandCodec implements CommandCodec<HttpReque
    *
    * @param name The command name.
    * @param method The HTTP method to use for the command.
-   * @param pathPattern The URI path pattern for the command. When encoding a command, each
-   *     path segment prefixed with a ":" will be replaced with the corresponding parameter
-   *     from the encoded command.
+   * @param pathPattern The URI path pattern for the command. When encoding a command, each path
+   *     segment prefixed with a ":" will be replaced with the corresponding parameter from the
+   *     encoded command.
    */
   @Override
   public void defineCommand(String name, HttpMethod method, String pathPattern) {
@@ -335,23 +349,8 @@ public abstract class AbstractHttpCommandCodec implements CommandCodec<HttpReque
     nameToSpec.put(Require.nonNull("Name", name), spec);
   }
 
-  protected static CommandSpec delete(String path) {
-    return new CommandSpec(HttpMethod.DELETE, path);
-  }
-
-  protected static CommandSpec get(String path) {
-    return new CommandSpec(HttpMethod.GET, path);
-  }
-
-  protected static CommandSpec post(String path) {
-    return new CommandSpec(HttpMethod.POST, path);
-  }
-
   private String buildUri(
-    String commandName,
-    SessionId sessionId,
-    Map<String, ?> parameters,
-    CommandSpec spec) {
+      String commandName, SessionId sessionId, Map<String, ?> parameters, CommandSpec spec) {
     StringBuilder builder = new StringBuilder();
     for (String part : spec.pathSegments) {
       if (part.isEmpty()) {
@@ -369,18 +368,16 @@ public abstract class AbstractHttpCommandCodec implements CommandCodec<HttpReque
   }
 
   private String getParameter(
-    String parameterName,
-    String commandName,
-    SessionId sessionId,
-    Map<String, ?> parameters) {
+      String parameterName, String commandName, SessionId sessionId, Map<String, ?> parameters) {
     if ("sessionId".equals(parameterName)) {
-      Require.argument("Session id", sessionId).nonNull("Session ID may not be null for command %s", commandName);
+      Require.argument("Session id", sessionId)
+          .nonNull("Session ID may not be null for command %s", commandName);
       return sessionId.toString();
     }
 
     Object value = parameters.get(parameterName);
-    Require.argument("Parameter", value).nonNull(
-        "Missing required parameter \"%s\" for command %s", parameterName, commandName);
+    Require.argument("Parameter", value)
+        .nonNull("Missing required parameter \"%s\" for command %s", parameterName, commandName);
     return Urls.urlEncode(String.valueOf(value));
   }
 
@@ -399,8 +396,7 @@ public abstract class AbstractHttpCommandCodec implements CommandCodec<HttpReque
     public boolean equals(Object o) {
       if (o instanceof CommandSpec) {
         CommandSpec that = (CommandSpec) o;
-        return this.method.equals(that.method)
-               && this.path.equals(that.path);
+        return this.method.equals(that.method) && this.path.equals(that.path);
       }
       return false;
     }

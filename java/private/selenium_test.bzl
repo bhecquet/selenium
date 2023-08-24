@@ -1,3 +1,4 @@
+load("@contrib_rules_jvm//java:defs.bzl", "java_junit5_test")
 load(
     "//common:browsers.bzl",
     "COMMON_TAGS",
@@ -11,7 +12,6 @@ load(
     "edge_jvm_flags",
     "firefox_jvm_flags",
 )
-load("//java/private:library.bzl", "add_lint_tests")
 
 DEFAULT_BROWSER = "firefox"
 
@@ -26,7 +26,7 @@ BROWSERS = {
         "deps": ["//java/src/org/openqa/selenium/edge"],
         "jvm_flags": ["-Dselenium.browser=edge"] + edge_jvm_flags,
         "data": edge_data,
-        "tags": COMMON_TAGS + ["edge"],
+        "tags": COMMON_TAGS + ["edge", "skip-remote"],
     },
     "firefox": {
         "deps": ["//java/src/org/openqa/selenium/firefox"],
@@ -42,7 +42,7 @@ BROWSERS = {
                          "@selenium//conditions:default": ["-Dselenium.skiptest=true"],
                      }),
         "data": [],
-        "tags": COMMON_TAGS + ["exclusive", "ie"],
+        "tags": COMMON_TAGS + ["exclusive-if-local", "ie", "skip-remote"],
     },
     "safari": {
         "deps": ["//java/src/org/openqa/selenium/safari"],
@@ -52,11 +52,13 @@ BROWSERS = {
                          "@selenium//conditions:default": ["-Dselenium.skiptest=true"],
                      }),
         "data": [],
-        "tags": COMMON_TAGS + ["exclusive", "safari"],
+        "tags": COMMON_TAGS + ["exclusive-if-local", "safari", "skip-remote"],
     },
 }
 
-def selenium_test(name, test_class, size = "medium", browsers = BROWSERS.keys(), **kwargs):
+DEFAULT_BROWSERS = [b for b in BROWSERS.keys() if b != "ie"]
+
+def selenium_test(name, test_class, size = "medium", browsers = DEFAULT_BROWSERS, **kwargs):
     if len(browsers) == 0:
         fail("At least one browser must be specified.")
 
@@ -68,10 +70,18 @@ def selenium_test(name, test_class, size = "medium", browsers = BROWSERS.keys(),
     jvm_flags = kwargs["jvm_flags"] if "jvm_flags" in kwargs else []
     tags = kwargs["tags"] if "tags" in kwargs else []
 
+    remote = False
+    if "selenium-remote" in tags:
+        tags.remove("selenium-remote")
+        remote = True
+
     stripped_args = dict(**kwargs)
     stripped_args.pop("data", None)
     stripped_args.pop("jvm_flags", None)
     stripped_args.pop("tags", None)
+    inherited_env = stripped_args.pop("env_inherit", []) + ["REMOTE_BUILD"]
+
+    all_tests = []
 
     for browser in browsers:
         if not browser in BROWSERS:
@@ -79,32 +89,41 @@ def selenium_test(name, test_class, size = "medium", browsers = BROWSERS.keys(),
 
         test = name if browser == default_browser else "%s-%s" % (name, browser)
 
-        native.java_test(
+        java_junit5_test(
             name = test,
             test_class = test_class,
             size = size,
             jvm_flags = BROWSERS[browser]["jvm_flags"] + jvm_flags,
-            tags = BROWSERS[browser]["tags"] + tags,
+            # Only allow linting on the default test
+            tags = BROWSERS[browser]["tags"] + tags + ([] if test == name else ["no-lint"]),
             data = BROWSERS[browser]["data"] + data,
+            env_inherit = inherited_env,
             **stripped_args
         )
+        if browser == default_browser:
+            native.alias(
+                name = "%s-%s" % (name, browser),
+                actual = test,
+            )
+        all_tests.append(":%s" % test)
 
-        if "selenium-remote" in tags:
-            native.java_test(
+        if remote:
+            java_junit5_test(
                 name = "%s-remote" % test,
                 test_class = test_class,
                 size = size,
                 jvm_flags = BROWSERS[browser]["jvm_flags"] + jvm_flags + [
                     "-Dselenium.browser.remote=true",
-                    "-Dselenium.browser.remote.path=$(location @selenium//java/src/org/openqa/selenium/grid:selenium_server_deploy.jar)",
+                    "-Dselenium.browser.remote.path=$(location @selenium//java/src/org/openqa/selenium/grid:selenium_server)",
                 ],
-                tags = BROWSERS[browser]["tags"] + tags + ["remote"],
+                # No need to lint remote tests as the code for non-remote is the same and they get linted
+                tags = BROWSERS[browser]["tags"] + tags + ["remote-browser", "no-lint"],
                 data = BROWSERS[browser]["data"] + data + [
-                    "@selenium//java/src/org/openqa/selenium/grid:selenium_server_deploy.jar",
+                    "@selenium//java/src/org/openqa/selenium/grid:selenium_server",
                 ],
                 **stripped_args
             )
+            all_tests.append(":%s-remote" % test)
 
     # Handy way to run everything
-    native.test_suite(name = "%s-all-browsers" % name, tests = [":%s-%s" % (name, default_browser)], tags = tags + ["manual"])
-    add_lint_tests(name, **kwargs)
+    native.test_suite(name = "%s-all-browsers" % name, tests = all_tests, tags = tags + ["manual"])

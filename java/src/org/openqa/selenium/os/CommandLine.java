@@ -17,35 +17,21 @@
 
 package org.openqa.selenium.os;
 
-
 import static org.openqa.selenium.Platform.MAC;
 import static org.openqa.selenium.Platform.WINDOWS;
-
-import org.openqa.selenium.Platform;
-import org.openqa.selenium.WebDriverException;
 
 import java.io.File;
 import java.io.OutputStream;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import org.openqa.selenium.Platform;
+import org.openqa.selenium.WebDriverException;
 
 public class CommandLine {
 
   private final OsProcess process;
 
   public CommandLine(String executable, String... args) {
-    process = new OsProcess(executable, args);
-  }
-
-  /**
-   * @deprecated Use {@link #CommandLine(String, String...)}
-   */
-  @Deprecated
-  public CommandLine(String[] cmdarray) {
-    String executable = cmdarray[0];
-    int length = cmdarray.length - 1;
-    String[] args = new String[length];
-    System.arraycopy(cmdarray, 1, args, 0, length);
-
     process = new OsProcess(executable, args);
   }
 
@@ -64,7 +50,7 @@ public class CommandLine {
   /**
    * Adds the specified environment variable.
    *
-   * @param name  the name of the environment variable
+   * @param name the name of the environment variable
    * @param value the value of the environment variable
    * @throws IllegalArgumentException if the value given is null (unsupported)
    */
@@ -111,6 +97,10 @@ public class CommandLine {
   public void execute() {
     executeAsync();
     waitFor();
+  }
+
+  public boolean waitForProcessStarted(long duration, TimeUnit unit) {
+    return process.waitForProcessStarted(duration, unit);
   }
 
   public void waitFor() {

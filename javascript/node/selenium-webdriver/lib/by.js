@@ -41,9 +41,8 @@
  *     {name: string}|
  *     {partialLinkText: string}|
  *     {tagName: string}|
- *     {xpath: string})}
+ *     {xpath: string})} ByHash
  */
-var ByHash // eslint-disable-line
 
 /**
  * Error thrown if an invalid character is encountered while escaping a CSS
@@ -225,7 +224,7 @@ class By {
    * @return {!By} The new locator.
    */
   static tagName(name) {
-    return By.css(name)
+    return new By('tag name', name)
   }
 
   /**
@@ -397,7 +396,7 @@ class RelativeBy {
  *     strategy.
  */
 function check(locator) {
-  if (locator instanceof By || typeof locator === 'function') {
+  if (locator instanceof By || locator instanceof RelativeBy || typeof locator === 'function') {
     return locator
   }
 

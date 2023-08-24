@@ -10,11 +10,14 @@ py)
   tox -c py/tox.ini -e docs || exit
   ;;
 rb)
-  cd rb || exit
-  bundle install || exit
-  cd ..
   bazel run //rb:docs || exit
-  git checkout rb/Gemfile.lock || true
+  docs="$(bazel cquery --output=files //rb:docs 2> /dev/null).runfiles/selenium/docs/api/rb"
+  ;;
+dotnet)
+  # dotnet sdk should be installed
+  # bazel should be installed
+  dotnet tool update -g docfx
+  docfx dotnet/docs/docfx.json
   ;;
 *)
   echo "Selenium API docs generation"
@@ -23,7 +26,7 @@ rb)
   echo ""
   echo "./generate_api_docs.sh java|rb|py"
   echo -e "\t Example:"
-  echo -e "\t Genrating API docs for the Ruby bindings"
+  echo -e "\t Generating API docs for the Ruby bindings"
   echo -e "\t ./generate_api_docs.sh rb"
   exit 1
   ;;
@@ -45,7 +48,11 @@ py)
   ;;
 rb)
   rm -rf docs/api/rb
-  mv bazel-bin/rb/docs.runfiles/selenium/docs/api/rb docs/api/rb
+  mv $docs docs/api/rb
+  ;;
+dotnet)
+  rm -rf docs/api/dotnet
+  mv build/docs/api/dotnet docs/api/dotnet
   ;;
 *)
   echo "ERROR: unknown parameter \"$API_DOCS_LANGUAGE\""

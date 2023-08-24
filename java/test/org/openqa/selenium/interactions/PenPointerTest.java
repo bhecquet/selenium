@@ -17,27 +17,6 @@
 
 package org.openqa.selenium.interactions;
 
-import org.junit.Test;
-import org.openqa.selenium.By;
-import org.openqa.selenium.Dimension;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.Point;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.remote.RemoteWebDriver;
-import org.openqa.selenium.support.Color;
-import org.openqa.selenium.support.Colors;
-import org.openqa.selenium.support.ui.ExpectedCondition;
-import org.openqa.selenium.testing.Ignore;
-import org.openqa.selenium.testing.JUnit4TestBase;
-import org.openqa.selenium.testing.NeedsFreshDriver;
-import org.openqa.selenium.testing.NotYetImplemented;
-import org.openqa.selenium.testing.SwitchToTopAfterTest;
-
-import java.time.Duration;
-import java.util.Collections;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.openqa.selenium.WaitingConditions.elementTextToEqual;
@@ -53,10 +32,34 @@ import static org.openqa.selenium.testing.drivers.Browser.HTMLUNIT;
 import static org.openqa.selenium.testing.drivers.Browser.IE;
 import static org.openqa.selenium.testing.drivers.Browser.SAFARI;
 
-/**
- * Tests operations that involve pen input device.
- */
-public class PenPointerTest extends JUnit4TestBase {
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.Rectangle;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.support.Color;
+import org.openqa.selenium.support.Colors;
+import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.testing.Ignore;
+import org.openqa.selenium.testing.JupiterTestBase;
+import org.openqa.selenium.testing.NeedsFreshDriver;
+import org.openqa.selenium.testing.NotYetImplemented;
+import org.openqa.selenium.testing.SwitchToTopAfterTest;
+
+/** Tests operations that involve pen input device. */
+class PenPointerTest extends JupiterTestBase {
   private final PointerInput defaultPen = new PointerInput(PointerInput.Kind.PEN, "default pen");
 
   private Actions setDefaultPen(WebDriver driver) {
@@ -72,17 +75,13 @@ public class PenPointerTest extends JUnit4TestBase {
     WebElement dragInto = driver.findElement(By.id("sortable1"));
     WebElement leftItem = driver.findElement(By.id("leftitem-4"));
 
-    Action moveToSpecificItem = setDefaultPen(driver)
-      .moveToElement(leftItem).build();
+    Action moveToSpecificItem = setDefaultPen(driver).moveToElement(leftItem).build();
 
-    Action holdItem = setDefaultPen(driver)
-      .clickAndHold(toDrag).build();
+    Action holdItem = setDefaultPen(driver).clickAndHold(toDrag).build();
 
-    Action moveToOtherList = setDefaultPen(driver)
-      .moveToElement(dragInto).build();
+    Action moveToOtherList = setDefaultPen(driver).moveToElement(dragInto).build();
 
-    Action drop = setDefaultPen(driver)
-      .release(dragInto).build();
+    Action drop = setDefaultPen(driver).release(dragInto).build();
 
     try {
       holdItem.perform();
@@ -133,8 +132,8 @@ public class PenPointerTest extends JUnit4TestBase {
 
     long waitEndTime = System.currentTimeMillis() + 15000;
 
-    while (!isElementAvailable(driver, By.id("draggable")) &&
-           (System.currentTimeMillis() < waitEndTime)) {
+    while (!isElementAvailable(driver, By.id("draggable"))
+        && (System.currentTimeMillis() < waitEndTime)) {
       Thread.sleep(200);
     }
 
@@ -159,7 +158,7 @@ public class PenPointerTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testMoveAndClick() {
+  void testMoveAndClick() {
     driver.get(pages.javascriptPage);
 
     WebElement toClick = driver.findElement(By.id("clickField"));
@@ -173,10 +172,10 @@ public class PenPointerTest extends JUnit4TestBase {
   }
 
   @Test
-  public void testCannotMoveToANullLocator() {
+  void testCannotMoveToANullLocator() {
     driver.get(pages.javascriptPage);
     assertThatExceptionOfType(IllegalArgumentException.class)
-      .isThrownBy(() -> setDefaultPen(driver).moveToElement(null).build());
+        .isThrownBy(() -> setDefaultPen(driver).moveToElement(null).build());
   }
 
   @Test
@@ -184,20 +183,19 @@ public class PenPointerTest extends JUnit4TestBase {
   @NotYetImplemented(SAFARI)
   public void testMovingPastViewPortThrowsException() {
     assertThatExceptionOfType(MoveTargetOutOfBoundsException.class)
-      .isThrownBy(() -> setDefaultPen(driver).moveByOffset(-1000, -1000).perform());
+        .isThrownBy(() -> setDefaultPen(driver).moveByOffset(-1000, -1000).perform());
   }
 
   @SwitchToTopAfterTest
   @Test
-  public void testShouldClickElementInIFrame() {
+  void testShouldClickElementInIFrame() {
     driver.get(pages.clicksPage);
     driver.switchTo().frame("source");
     WebElement element = driver.findElement(By.id("otherframe"));
 
     setDefaultPen(driver).moveToElement(element).click().perform();
 
-    driver.switchTo().defaultContent()
-        .switchTo().frame("target");
+    driver.switchTo().defaultContent().switchTo().frame("target");
     wait.until(elementTextToEqual(By.id("span"), "An inline element"));
   }
 
@@ -209,7 +207,7 @@ public class PenPointerTest extends JUnit4TestBase {
     WebElement element = driver.findElement(By.id("menu1"));
 
     final WebElement item = driver.findElement(By.id("item1"));
-    assertThat(item.getText()).isEqualTo("");
+    assertThat(item.getText()).isEmpty();
 
     ((JavascriptExecutor) driver).executeScript("arguments[0].style.background = 'green'", element);
 
@@ -231,7 +229,7 @@ public class PenPointerTest extends JUnit4TestBase {
     WebElement element = driver.findElement(By.id("menu1"));
 
     final WebElement item = driver.findElement(By.id("item1"));
-    assertThat(item.getText()).isEqualTo("");
+    assertThat(item.getText()).isEmpty();
 
     ((JavascriptExecutor) driver).executeScript("arguments[0].style.background = 'green'", element);
 
@@ -270,7 +268,9 @@ public class PenPointerTest extends JUnit4TestBase {
 
     WebElement trackerDiv = driver.findElement(By.id("mousetracker"));
     Dimension size = trackerDiv.getSize();
-    setDefaultPen(driver).moveToElement(trackerDiv, 95 - size.getWidth() / 2, 195 - size.getHeight() / 2).perform();
+    setDefaultPen(driver)
+        .moveToElement(trackerDiv, 95 - size.getWidth() / 2, 195 - size.getHeight() / 2)
+        .perform();
 
     WebElement reporter = driver.findElement(By.id("status"));
 
@@ -305,8 +305,11 @@ public class PenPointerTest extends JUnit4TestBase {
 
       wait.until(fuzzyMatchingOfCoordinates(reporter, 40, 20));
     } finally {
-      Sequence actionList = new Sequence(defaultPen, 0)
-        .addAction(defaultPen.createPointerMove(Duration.ZERO, PointerInput.Origin.pointer(), -50, -100));
+      Sequence actionList =
+          new Sequence(defaultPen, 0)
+              .addAction(
+                  defaultPen.createPointerMove(
+                      Duration.ZERO, PointerInput.Origin.pointer(), new Point(-50, -100)));
       ((RemoteWebDriver) driver).perform(Collections.singletonList(actionList));
     }
   }
@@ -331,17 +334,23 @@ public class PenPointerTest extends JUnit4TestBase {
 
     setDefaultPen(driver).moveToElement(greenbox, xOffset, yOffset).perform();
 
-    shortWait.until(attributeToBe(redbox, "background-color", Colors.GREEN.getColorValue().asRgba()));
+    shortWait.until(
+        attributeToBe(redbox, "background-color", Colors.GREEN.getColorValue().asRgba()));
 
-    setDefaultPen(driver).moveToElement(greenbox, xOffset, yOffset)
-      .moveByOffset(shiftX, shiftY).perform();
+    setDefaultPen(driver)
+        .moveToElement(greenbox, xOffset, yOffset)
+        .moveByOffset(shiftX, shiftY)
+        .perform();
     shortWait.until(attributeToBe(redbox, "background-color", Colors.RED.getColorValue().asRgba()));
 
-    setDefaultPen(driver).moveToElement(greenbox, xOffset, yOffset)
-      .moveByOffset(shiftX, shiftY)
-      .moveByOffset(-shiftX, -shiftY).perform();
+    setDefaultPen(driver)
+        .moveToElement(greenbox, xOffset, yOffset)
+        .moveByOffset(shiftX, shiftY)
+        .moveByOffset(-shiftX, -shiftY)
+        .perform();
 
-    shortWait.until(attributeToBe(redbox, "background-color", Colors.GREEN.getColorValue().asRgba()));
+    shortWait.until(
+        attributeToBe(redbox, "background-color", Colors.GREEN.getColorValue().asRgba()));
   }
 
   @Test
@@ -356,19 +365,88 @@ public class PenPointerTest extends JUnit4TestBase {
     Dimension greenSize = greenbox.getSize();
     Dimension redSize = redbox.getSize();
 
-    setDefaultPen(driver).moveToElement(greenbox, 1 - greenSize.getWidth() / 2, 1 - greenSize.getHeight() / 2).perform();
+    setDefaultPen(driver)
+        .moveToElement(greenbox, 1 - greenSize.getWidth() / 2, 1 - greenSize.getHeight() / 2)
+        .perform();
 
     assertThat(Color.fromString(redbox.getCssValue("background-color")))
-      .isEqualTo(GREEN.getColorValue());
+        .isEqualTo(GREEN.getColorValue());
 
     setDefaultPen(driver).moveToElement(redbox).perform();
     assertThat(Color.fromString(redbox.getCssValue("background-color")))
-      .isEqualTo(RED.getColorValue());
+        .isEqualTo(RED.getColorValue());
 
-    setDefaultPen(driver).moveToElement(redbox, redSize.getWidth() / 1 + 1, redSize.getHeight() / 1 + 1)
-      .perform();
+    setDefaultPen(driver)
+        .moveToElement(redbox, redSize.getWidth() / 1 + 1, redSize.getHeight() / 1 + 1)
+        .perform();
 
     wait.until(attributeToBe(redbox, "background-color", Colors.GREEN.getColorValue().asRgba()));
+  }
+
+  @Test
+  @Ignore(value = FIREFOX, issue = "https://github.com/mozilla/geckodriver/issues/789")
+  public void setPointerEventProperties() {
+    driver.get(pages.pointerActionsPage);
+    long start = System.currentTimeMillis();
+
+    WebElement pointerArea = driver.findElement(By.id("pointerArea"));
+    PointerInput pen = new PointerInput(PointerInput.Kind.PEN, "default pen");
+    PointerInput.PointerEventProperties eventProperties =
+        PointerInput.eventProperties().setTiltX(-72).setTiltY(9).setTwist(86);
+    PointerInput.Origin origin = PointerInput.Origin.fromElement(pointerArea);
+
+    Sequence actionListPen =
+        new Sequence(pen, 0)
+            .addAction(pen.createPointerMove(Duration.ZERO, origin, 0, 0))
+            .addAction(pen.createPointerDown(0))
+            .addAction(
+                pen.createPointerMove(
+                    Duration.ofMillis(800), origin, new Point(2, 2), eventProperties))
+            .addAction(pen.createPointerUp(0));
+
+    ((RemoteWebDriver) driver).perform(List.of(actionListPen));
+
+    long duration = System.currentTimeMillis() - start;
+    Assertions.assertThat(duration).isGreaterThan(2);
+
+    List<WebElement> moves = driver.findElements(By.className("pointermove"));
+    Map<String, String> moveTo = properties(moves.get(0));
+    Map<String, String> down = properties(driver.findElement(By.className("pointerdown")));
+    Map<String, String> moveBy = properties(moves.get(1));
+    Map<String, String> up = properties(driver.findElement(By.className("pointerup")));
+
+    Rectangle rect = pointerArea.getRect();
+
+    int centerX = (int) Math.floor(rect.width / 2 + rect.getX());
+    int centerY = (int) Math.floor(rect.height / 2 + rect.getY());
+    Assertions.assertThat(moveTo.get("button")).isEqualTo("-1");
+    Assertions.assertThat(moveTo.get("pageX")).isEqualTo("" + centerX);
+    Assertions.assertThat(moveTo.get("pageY")).isEqualTo("" + centerY);
+    Assertions.assertThat(down.get("button")).isEqualTo("0");
+    Assertions.assertThat(down.get("pageX")).isEqualTo("" + centerX);
+    Assertions.assertThat(down.get("pageY")).isEqualTo("" + centerY);
+    Assertions.assertThat(moveBy.get("button")).isEqualTo("-1");
+    Assertions.assertThat(moveBy.get("pageX")).isEqualTo("" + (centerX + 2));
+    Assertions.assertThat(moveBy.get("pageY")).isEqualTo("" + (centerY + 2));
+    Assertions.assertThat(moveBy.get("tiltX")).isEqualTo("-72");
+    Assertions.assertThat(moveBy.get("tiltY")).isEqualTo("9");
+    Assertions.assertThat(moveBy.get("twist")).isEqualTo("86");
+    Assertions.assertThat(up.get("button")).isEqualTo("0");
+    Assertions.assertThat(up.get("pageX")).isEqualTo("" + (centerX + 2));
+    Assertions.assertThat(up.get("pageY")).isEqualTo("" + (centerY + 2));
+  }
+
+  private Map<String, String> properties(WebElement element) {
+    String text = element.getText();
+    text = text.substring(text.indexOf(' ') + 1);
+
+    return Arrays.stream(text.split(", "))
+        .map(s -> s.split(": "))
+        .collect(
+            Collectors.toMap(
+                a -> a[0], // key
+                a -> a[1] // value
+                ));
   }
 
   private boolean fuzzyPositionMatching(int expectedX, int expectedY, String locationTuple) {
@@ -378,9 +456,8 @@ public class PenPointerTest extends JUnit4TestBase {
 
     // Everything within 5 pixels range is OK
     final int ALLOWED_DEVIATION = 5;
-    return Math.abs(expectedX - gotX) < ALLOWED_DEVIATION &&
-           Math.abs(expectedY - gotY) < ALLOWED_DEVIATION;
-
+    return Math.abs(expectedX - gotX) < ALLOWED_DEVIATION
+        && Math.abs(expectedY - gotY) < ALLOWED_DEVIATION;
   }
 
   private ExpectedCondition<Boolean> fuzzyMatchingOfCoordinates(
@@ -393,8 +470,7 @@ public class PenPointerTest extends JUnit4TestBase {
 
       @Override
       public String toString() {
-        return "Coordinates: " + element.getText() + " but expected: " +
-               x + ", " + y;
+        return "Coordinates: " + element.getText() + " but expected: " + x + ", " + y;
       }
     };
   }

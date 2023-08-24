@@ -17,65 +17,69 @@
 
 package org.openqa.selenium.chromium;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.devtools.events.ConsoleEvent;
-import org.openqa.selenium.devtools.events.DomMutationEvent;
-import org.openqa.selenium.logging.HasLogEvents;
-import org.openqa.selenium.testing.JUnit4TestBase;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
-
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assumptions.assumeThat;
 import static org.openqa.selenium.devtools.events.CdpEventTypes.consoleEvent;
 import static org.openqa.selenium.devtools.events.CdpEventTypes.domMutation;
 
-public class LoggingTest extends JUnit4TestBase {
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.devtools.events.ConsoleEvent;
+import org.openqa.selenium.devtools.events.DomMutationEvent;
+import org.openqa.selenium.logging.HasLogEvents;
+import org.openqa.selenium.testing.JupiterTestBase;
 
-  @Before
+class LoggingTest extends JupiterTestBase {
+
+  @BeforeEach
   public void checkAssumptions() {
     assumeThat(driver).isInstanceOf(HasLogEvents.class);
   }
 
   @Test
-  public void demonstrateLoggingWorks() throws InterruptedException {
+  void demonstrateLoggingWorks() throws InterruptedException {
     HasLogEvents logger = (HasLogEvents) driver;
 
     AtomicReference<ConsoleEvent> seen = new AtomicReference<>();
     CountDownLatch latch = new CountDownLatch(1);
-    logger.onLogEvent(consoleEvent(entry -> {
-        seen.set(entry);
-        latch.countDown();
-    }));
+    logger.onLogEvent(
+        consoleEvent(
+            entry -> {
+              seen.set(entry);
+              latch.countDown();
+            }));
 
     driver.get(pages.javascriptPage);
     ((JavascriptExecutor) driver).executeScript("console.log('I like cheese');");
 
     assertThat(latch.await(10, SECONDS)).isTrue();
-    assertThat(seen.get().toString()).contains("I like cheese");
+    assertThat(seen.get().getMessages()).contains("I like cheese");
   }
 
   @Test
-  public void watchDomMutations() throws InterruptedException {
+  void watchDomMutations() throws InterruptedException {
     HasLogEvents logger = (HasLogEvents) driver;
 
     AtomicReference<DomMutationEvent> seen = new AtomicReference<>();
     CountDownLatch latch = new CountDownLatch(1);
-    logger.onLogEvent(domMutation(mutation -> {
-      seen.set(mutation);
-      latch.countDown();
-    }));
+    logger.onLogEvent(
+        domMutation(
+            mutation -> {
+              seen.set(mutation);
+              latch.countDown();
+            }));
 
     driver.get(pages.simpleTestPage);
     WebElement span = driver.findElement(By.id("span"));
 
-    ((JavascriptExecutor) driver).executeScript("arguments[0].setAttribute('cheese', 'gouda');", span);
+    ((JavascriptExecutor) driver)
+        .executeScript("arguments[0].setAttribute('cheese', 'gouda');", span);
 
     assertThat(latch.await(10, SECONDS)).isTrue();
     assertThat(seen.get().getAttributeName()).isEqualTo("cheese");

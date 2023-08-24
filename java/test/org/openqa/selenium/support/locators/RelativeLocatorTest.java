@@ -17,38 +17,39 @@
 
 package org.openqa.selenium.support.locators;
 
-import org.junit.Test;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.environment.webserver.Page;
-import org.openqa.selenium.testing.JUnit4TestBase;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.openqa.selenium.By.cssSelector;
 import static org.openqa.selenium.By.tagName;
 import static org.openqa.selenium.By.xpath;
 import static org.openqa.selenium.support.locators.RelativeLocator.with;
 
+import java.util.List;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.environment.webserver.Page;
+import org.openqa.selenium.testing.JupiterTestBase;
 
-public class RelativeLocatorTest extends JUnit4TestBase {
+class RelativeLocatorTest extends JupiterTestBase {
 
   @Test
-  public void shouldBeAbleToFindElementsAboveAnotherWithTagName() {
+  void shouldBeAbleToFindElementsAboveAnotherWithTagName() {
     driver.get(appServer.whereIs("relative_locators.html"));
 
     WebElement lowest = driver.findElement(By.id("below"));
 
     List<WebElement> elements = driver.findElements(with(tagName("p")).above(lowest));
-    List<String> ids = elements.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
+    List<String> ids =
+        elements.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
 
     assertThat(ids).containsExactly("mid", "above");
   }
 
   @Test
-  public void shouldBeAbleToFindElementsAboveAnotherWithXpath() {
+  void shouldBeAbleToFindElementsAboveAnotherWithXpath() {
     driver.get(appServer.whereIs("relative_locators.html"));
 
     WebElement lowest = driver.findElement(By.id("seventh"));
@@ -61,23 +62,24 @@ public class RelativeLocatorTest extends JUnit4TestBase {
   }
 
   @Test
-  public void shouldBeAbleToFindElementsAboveAnotherWithCssSelector() {
+  void shouldBeAbleToFindElementsAboveAnotherWithCssSelector() {
     driver.get(appServer.whereIs("relative_locators.html"));
 
     WebElement lowest = driver.findElement(By.id("below"));
 
     List<WebElement> elements = driver.findElements(with(cssSelector("p")).above(lowest));
-    List<String> ids = elements.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
+    List<String> ids =
+        elements.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
 
     assertThat(ids).containsExactly("mid", "above");
-
   }
 
   @Test
-  public void shouldBeAbleToCombineFilters() {
+  void shouldBeAbleToCombineFilters() {
     driver.get(appServer.whereIs("relative_locators.html"));
 
-    List<WebElement> seen = driver.findElements(with(tagName("td")).above(By.id("center")).toRightOf(By.id("second")));
+    List<WebElement> seen =
+        driver.findElements(with(tagName("td")).above(By.id("center")).toRightOf(By.id("second")));
 
     List<String> ids = seen.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
 
@@ -85,23 +87,24 @@ public class RelativeLocatorTest extends JUnit4TestBase {
   }
 
   @Test
-  public void shouldBeAbleToCombineFiltersWithXpath() {
+  void shouldBeAbleToCombineFiltersWithXpath() {
     driver.get(appServer.whereIs("relative_locators.html"));
 
-    List<WebElement> seen = driver.findElements(with(xpath("//td[1]")).below(By.id("second")).above(By.id("seventh")));
+    List<WebElement> seen =
+        driver.findElements(with(xpath("//td[1]")).below(By.id("second")).above(By.id("seventh")));
 
     List<String> ids = seen.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
 
     assertThat(ids).containsExactly("fourth");
-
   }
 
   @Test
-  public void shouldBeAbleToCombineFiltersWithCssSelector() {
+  void shouldBeAbleToCombineFiltersWithCssSelector() {
     driver.get(appServer.whereIs("relative_locators.html"));
 
-
-    List<WebElement> seen = driver.findElements(with(cssSelector("td")).above(By.id("center")).toRightOf(By.id("second")));
+    List<WebElement> seen =
+        driver.findElements(
+            with(cssSelector("td")).above(By.id("center")).toRightOf(By.id("second")));
 
     List<String> ids = seen.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
 
@@ -109,7 +112,7 @@ public class RelativeLocatorTest extends JUnit4TestBase {
   }
 
   @Test
-  public void exerciseNearLocatorWithTagName() {
+  void exerciseNearLocatorWithTagName() {
     driver.get(appServer.whereIs("relative_locators.html"));
 
     List<WebElement> seen = driver.findElements(with(tagName("td")).near(By.id("center")));
@@ -124,11 +127,13 @@ public class RelativeLocatorTest extends JUnit4TestBase {
     // 5-8. Diagonally close (pythagoras sorting, with top row first
     //    because of DOM insertion order)
     List<String> ids = seen.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
-    assertThat(ids).containsExactly("second", "eighth", "fourth", "sixth", "first", "third", "seventh", "ninth");
+    assertThat(ids)
+        .containsExactly(
+            "second", "eighth", "fourth", "sixth", "first", "third", "seventh", "ninth");
   }
 
   @Test
-  public void exerciseNearLocatorWithXpath() {
+  void exerciseNearLocatorWithXpath() {
     driver.get(appServer.whereIs("relative_locators.html"));
 
     List<WebElement> seen = driver.findElements(with(xpath("//td")).near(By.id("center")));
@@ -144,11 +149,13 @@ public class RelativeLocatorTest extends JUnit4TestBase {
     //    because of DOM insertion order)
     List<String> ids = seen.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
 
-    assertThat(ids).containsExactly("second", "eighth", "fourth", "sixth", "first", "third", "seventh", "ninth");
+    assertThat(ids)
+        .containsExactly(
+            "second", "eighth", "fourth", "sixth", "first", "third", "seventh", "ninth");
   }
 
   @Test
-  public void exerciseNearLocatorWithCssSelector() {
+  void exerciseNearLocatorWithCssSelector() {
     driver.get(appServer.whereIs("relative_locators.html"));
 
     List<WebElement> seen = driver.findElements(with(cssSelector("td")).near(By.id("center")));
@@ -163,27 +170,33 @@ public class RelativeLocatorTest extends JUnit4TestBase {
     // 5-8. Diagonally close (pythagoras sorting, with top row first
     //    because of DOM insertion order)
     List<String> ids = seen.stream().map(e -> e.getAttribute("id")).collect(Collectors.toList());
-    assertThat(ids).containsExactly("second", "eighth", "fourth", "sixth", "first", "third", "seventh", "ninth");
+    assertThat(ids)
+        .containsExactly(
+            "second", "eighth", "fourth", "sixth", "first", "third", "seventh", "ninth");
   }
 
   @Test
-  public void ensureNoRepeatedElements() {
-    String url = appServer.create(new Page()
-      .withTitle("Repeated Elements")
-      .withStyles(" .c {\n" +
-        "    \tposition: absolute;\n" +
-        "    \tborder: 1px solid black;\n" +
-        "    \theight: 50px;\n" +
-        "    \twidth: 50px;\n" +
-        "    }")
-      .withBody("<span style=\"position: relative;\">\n" +
-        "    <div id= \"a\" class=\"c\" style=\"left:25;top:0;\">El-A</div>\n" +
-        "    <div id= \"b\" class=\"c\" style=\"left:78;top:30;\">El-B</div>\n" +
-        "    <div id= \"c\" class=\"c\" style=\"left:131;top:60;\">El-C</div>\n" +
-        "    <div id= \"d\" class=\"c\" style=\"left:0;top:53;\">El-D</div>\n" +
-        "    <div id= \"e\" class=\"c\" style=\"left:53;top:83;\">El-E</div>\n" +
-        "    <div id= \"f\" class=\"c\" style=\"left:106;top:113;\">El-F</div>\n" +
-        "  </span>"));
+  void ensureNoRepeatedElements() {
+    String url =
+        appServer.create(
+            new Page()
+                .withTitle("Repeated Elements")
+                .withStyles(
+                    " .c {\n"
+                        + "    \tposition: absolute;\n"
+                        + "    \tborder: 1px solid black;\n"
+                        + "    \theight: 50px;\n"
+                        + "    \twidth: 50px;\n"
+                        + "    }")
+                .withBody(
+                    "<span style=\"position: relative;\">\n"
+                        + "    <div id= \"a\" class=\"c\" style=\"left:25;top:0;\">El-A</div>\n"
+                        + "    <div id= \"b\" class=\"c\" style=\"left:78;top:30;\">El-B</div>\n"
+                        + "    <div id= \"c\" class=\"c\" style=\"left:131;top:60;\">El-C</div>\n"
+                        + "    <div id= \"d\" class=\"c\" style=\"left:0;top:53;\">El-D</div>\n"
+                        + "    <div id= \"e\" class=\"c\" style=\"left:53;top:83;\">El-E</div>\n"
+                        + "    <div id= \"f\" class=\"c\" style=\"left:106;top:113;\">El-F</div>\n"
+                        + "  </span>"));
 
     driver.get(url);
 
@@ -194,7 +207,30 @@ public class RelativeLocatorTest extends JUnit4TestBase {
     WebElement b = driver.findElement(By.id("b"));
 
     assertThat(cells)
-      .describedAs(cells.stream().map(e -> e.getAttribute("id")).collect(Collectors.joining(", ")))
-      .isEqualTo(List.of(b, a));
+        .describedAs(
+            cells.stream().map(e -> e.getAttribute("id")).collect(Collectors.joining(", ")))
+        .isEqualTo(List.of(b, a));
+  }
+
+  @Test
+  void nearLocatorShouldFindNearElements() {
+    driver.get(appServer.whereIs("relative_locators.html"));
+
+    WebElement rect1 = driver.findElement(By.id("rect1"));
+
+    WebElement rect2 = driver.findElement(with(By.id("rect2")).near(rect1));
+
+    assertThat(rect2.getAttribute("id")).isEqualTo("rect2");
+  }
+
+  @Test
+  void nearLocatorShouldNotFindFarElements() {
+    driver.get(appServer.whereIs("relative_locators.html"));
+
+    WebElement rect3 = driver.findElement(By.id("rect3"));
+
+    assertThatExceptionOfType(NoSuchElementException.class)
+        .isThrownBy(() -> driver.findElement(with(By.id("rect4")).near(rect3)))
+        .withMessageContaining("Cannot locate an element using");
   }
 }

@@ -18,38 +18,43 @@
 package org.openqa.selenium.grid.node.docker;
 
 import static org.openqa.selenium.Platform.WINDOWS;
+import static org.openqa.selenium.docker.Device.device;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
-
-import org.openqa.selenium.Capabilities;
-import org.openqa.selenium.Platform;
-import org.openqa.selenium.docker.ContainerId;
-import org.openqa.selenium.docker.ContainerInfo;
-import org.openqa.selenium.docker.Docker;
-import org.openqa.selenium.docker.DockerException;
-import org.openqa.selenium.docker.Image;
-import org.openqa.selenium.grid.config.Config;
-import org.openqa.selenium.grid.config.ConfigException;
-import org.openqa.selenium.grid.node.SessionFactory;
-import org.openqa.selenium.internal.Require;
-import org.openqa.selenium.json.Json;
-import org.openqa.selenium.net.HostIdentifier;
-import org.openqa.selenium.remote.http.ClientConfig;
-import org.openqa.selenium.remote.http.HttpClient;
-import org.openqa.selenium.remote.tracing.Tracer;
-
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.openqa.selenium.Capabilities;
+import org.openqa.selenium.Platform;
+import org.openqa.selenium.docker.ContainerId;
+import org.openqa.selenium.docker.ContainerInfo;
+import org.openqa.selenium.docker.Device;
+import org.openqa.selenium.docker.Docker;
+import org.openqa.selenium.docker.DockerException;
+import org.openqa.selenium.docker.Image;
+import org.openqa.selenium.grid.config.Config;
+import org.openqa.selenium.grid.config.ConfigException;
+import org.openqa.selenium.grid.node.SessionFactory;
+import org.openqa.selenium.grid.node.config.NodeOptions;
+import org.openqa.selenium.internal.Require;
+import org.openqa.selenium.json.Json;
+import org.openqa.selenium.net.HostIdentifier;
+import org.openqa.selenium.remote.http.ClientConfig;
+import org.openqa.selenium.remote.http.HttpClient;
+import org.openqa.selenium.remote.tracing.Tracer;
 
 public class DockerOptions {
 
@@ -86,13 +91,7 @@ public class DockerOptions {
         }
         URI uri = new URI(host);
         return new URI(
-          "http",
-          uri.getUserInfo(),
-          uri.getHost(),
-          uri.getPort(),
-          uri.getPath(),
-          null,
-          null);
+            "http", uri.getUserInfo(), uri.getHost(), uri.getPort(), uri.getPath(), null, null);
       }
 
       // Default for the system we're running on.
@@ -115,18 +114,20 @@ public class DockerOptions {
   }
 
   public Map<Capabilities, Collection<SessionFactory>> getDockerSessionFactories(
-    Tracer tracer,
-    HttpClient.Factory clientFactory) {
+      Tracer tracer, HttpClient.Factory clientFactory, NodeOptions options) {
 
-    HttpClient client = clientFactory.createClient(ClientConfig.defaultConfig().baseUri(getDockerUri()));
+    HttpClient client =
+        clientFactory.createClient(ClientConfig.defaultConfig().baseUri(getDockerUri()));
     Docker docker = new Docker(client);
 
     if (!isEnabled(docker)) {
       throw new DockerException("Unable to reach the Docker daemon at " + getDockerUri());
     }
 
-    List<String> allConfigs = config.getAll(DOCKER_SECTION, "configs")
-        .orElseThrow(() -> new DockerException("Unable to find docker configs"));
+    List<String> allConfigs =
+        config
+            .getAll(DOCKER_SECTION, "configs")
+            .orElseThrow(() -> new DockerException("Unable to find docker configs"));
 
     Multimap<String, Capabilities> kinds = HashMultimap.create();
     for (int i = 0; i < allConfigs.size(); i++) {
@@ -135,10 +136,13 @@ public class DockerOptions {
       if (i == allConfigs.size()) {
         throw new DockerException("Unable to find JSON config");
       }
-      Capabilities stereotype = JSON.toType(allConfigs.get(i), Capabilities.class);
+      Capabilities stereotype =
+          options.enhanceStereotype(JSON.toType(allConfigs.get(i), Capabilities.class));
 
       kinds.put(imageName, stereotype);
     }
+
+    List<Device> devicesMapping = getDevicesMapping();
 
     // If Selenium Server is running inside a Docker container, we can inspect that container
     // to get the information from it.
@@ -154,33 +158,62 @@ public class DockerOptions {
     loadImages(docker, videoImage.getName());
 
     // Hard coding the config section value "node" to avoid an extra dependency
-    int maxContainerCount = Math.min(config.getInt("node", "max-sessions")
-                                       .orElse(DEFAULT_MAX_SESSIONS), DEFAULT_MAX_SESSIONS);
+    int maxContainerCount =
+        Math.min(
+            config.getInt("node", "max-sessions").orElse(DEFAULT_MAX_SESSIONS),
+            DEFAULT_MAX_SESSIONS);
     ImmutableMultimap.Builder<Capabilities, SessionFactory> factories = ImmutableMultimap.builder();
-    kinds.forEach((name, caps) -> {
-      Image image = docker.getImage(name);
-      for (int i = 0; i < maxContainerCount; i++) {
-        factories.put(
-          caps,
-          new DockerSessionFactory(
-            tracer,
-            clientFactory,
-            docker,
-            getDockerUri(),
-            image,
-            caps,
-            videoImage,
-            assetsPath,
-            networkName,
-            info.isPresent()));
-      }
-      LOG.info(String.format(
-        "Mapping %s to docker image %s %d times",
-        caps,
-        name,
-        maxContainerCount));
-    });
+    kinds.forEach(
+        (name, caps) -> {
+          Image image = docker.getImage(name);
+          for (int i = 0; i < maxContainerCount; i++) {
+            factories.put(
+                caps,
+                new DockerSessionFactory(
+                    tracer,
+                    clientFactory,
+                    options.getSessionTimeout(),
+                    docker,
+                    getDockerUri(),
+                    image,
+                    caps,
+                    devicesMapping,
+                    videoImage,
+                    assetsPath,
+                    networkName,
+                    info.isPresent(),
+                    capabilities -> options.getSlotMatcher().matches(caps, capabilities)));
+          }
+          LOG.info(
+              String.format(
+                  "Mapping %s to docker image %s %d times", caps, name, maxContainerCount));
+        });
     return factories.build().asMap();
+  }
+
+  protected List<Device> getDevicesMapping() {
+    Pattern linuxDeviceMappingWithDefaultPermissionsPattern =
+        Pattern.compile("^([\\w\\/-]+):([\\w\\/-]+)$");
+    Pattern linuxDeviceMappingWithPermissionsPattern =
+        Pattern.compile("^([\\w\\/-]+):([\\w\\/-]+):([\\w]+)$");
+
+    List<String> devices =
+        config.getAll(DOCKER_SECTION, "devices").orElseGet(Collections::emptyList);
+
+    List<Device> deviceMapping = new ArrayList<>();
+    for (int i = 0; i < devices.size(); i++) {
+      String deviceMappingDefined = devices.get(i).trim();
+      Matcher matcher =
+          linuxDeviceMappingWithDefaultPermissionsPattern.matcher(deviceMappingDefined);
+
+      if (matcher.matches()) {
+        deviceMapping.add(device(matcher.group(1), matcher.group(2), null));
+      } else if ((matcher = linuxDeviceMappingWithPermissionsPattern.matcher(deviceMappingDefined))
+          .matches()) {
+        deviceMapping.add(device(matcher.group(1), matcher.group(2), matcher.group(3)));
+      }
+    }
+    return deviceMapping;
   }
 
   private Image getVideoImage(Docker docker) {
@@ -199,12 +232,13 @@ public class DockerOptions {
   @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
   private DockerAssetsPath getAssetsPath(Optional<ContainerInfo> info) {
     if (info.isPresent()) {
-      Optional<Map<String, Object>> mountedVolume = info.get().getMountedVolumes()
-        .stream()
-        .filter(
-          mounted ->
-            DEFAULT_ASSETS_PATH.equalsIgnoreCase(String.valueOf(mounted.get("Destination"))))
-        .findFirst();
+      Optional<Map<String, Object>> mountedVolume =
+          info.get().getMountedVolumes().stream()
+              .filter(
+                  mounted ->
+                      DEFAULT_ASSETS_PATH.equalsIgnoreCase(
+                          String.valueOf(mounted.get("Destination"))))
+              .findFirst();
 
       if (mountedVolume.isPresent()) {
         String hostPath = String.valueOf(mountedVolume.get().get("Source"));
@@ -216,14 +250,14 @@ public class DockerOptions {
     // We assume the user is not running the Selenium Server inside a Docker container
     // Therefore, we have access to the assets path on the host
     return assetsPath.map(path -> new DockerAssetsPath(path, path)).orElse(null);
-
   }
 
   private void loadImages(Docker docker, String... imageNames) {
-    CompletableFuture<Void> cd = CompletableFuture.allOf(
-      Arrays.stream(imageNames)
-            .map(name -> CompletableFuture.supplyAsync(() -> docker.getImage(name)))
-          .toArray(CompletableFuture[]::new));
+    CompletableFuture<Void> cd =
+        CompletableFuture.allOf(
+            Arrays.stream(imageNames)
+                .map(name -> CompletableFuture.supplyAsync(() -> docker.getImage(name)))
+                .toArray(CompletableFuture[]::new));
 
     try {
       cd.get();

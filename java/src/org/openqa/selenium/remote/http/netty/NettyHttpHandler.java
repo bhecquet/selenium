@@ -17,8 +17,12 @@
 
 package org.openqa.selenium.remote.http.netty;
 
-import static org.openqa.selenium.remote.http.netty.NettyClient.toClampedInt;
-
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.Response;
 import org.openqa.selenium.internal.Require;
@@ -27,13 +31,6 @@ import org.openqa.selenium.remote.http.HttpHandler;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
 import org.openqa.selenium.remote.http.RemoteCall;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class NettyHttpHandler extends RemoteCall {
 
@@ -54,16 +51,12 @@ public class NettyHttpHandler extends RemoteCall {
   private HttpResponse makeCall(HttpRequest request) {
     Require.nonNull("Request", request);
 
-    Future<Response> whenResponse = client.executeRequest(
-      NettyMessages.toNettyRequest(
-        getConfig().baseUri(),
-        toClampedInt(getConfig().readTimeout().toMillis()),
-        toClampedInt(getConfig().readTimeout().toMillis()),
-        getConfig().credentials(),
-        request));
+    Future<Response> whenResponse =
+        client.executeRequest(NettyMessages.toNettyRequest(getConfig(), request));
 
     try {
-      Response response = whenResponse.get(getConfig().readTimeout().toMillis(), TimeUnit.MILLISECONDS);
+      Response response =
+          whenResponse.get(getConfig().readTimeout().toMillis(), TimeUnit.MILLISECONDS);
       return NettyMessages.toSeleniumResponse(response);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();

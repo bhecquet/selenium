@@ -78,23 +78,14 @@
 'use strict'
 
 const { Browser } = require('./lib/capabilities')
-const io = require('./io')
 const chromium = require('./chromium')
-
-/**
- * Name of the EdgeDriver executable.
- * @type {string}
- * @const
- */
-const EDGEDRIVER_CHROMIUM_EXE =
-  process.platform === 'win32' ? 'msedgedriver.exe' : 'msedgedriver'
+const EDGE_CAPABILITY_KEY = 'ms:edgeOptions'
 
 /** @type {remote.DriverService} */
-let defaultService = null
 
 /**
  * Creates {@link selenium-webdriver/remote.DriverService} instances that manage
- * a [ChromeDriver](https://chromedriver.chromium.org/)
+ * a [MSEdgeDriver](https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/)
  * server in a child process.
  */
 class ServiceBuilder extends chromium.ServiceBuilder {
@@ -106,16 +97,7 @@ class ServiceBuilder extends chromium.ServiceBuilder {
    *     cannot be found on the PATH.
    */
   constructor(opt_exe) {
-    let exe = opt_exe || locateSynchronously()
-    if (!exe) {
-      throw Error(
-        `The WebDriver for Edge could not be found on the current PATH. Please download the ` +
-          `latest version of ${EDGEDRIVER_CHROMIUM_EXE} from ` +
-          `https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/ ` +
-          `and ensure it can be found on your PATH.`
-      )
-    }
-    super(exe)
+    super(opt_exe)
     this.setLoopback(true)
   }
 }
@@ -130,11 +112,24 @@ class Options extends chromium.Options {
    * The binary path be absolute or relative to the msedgedriver server
    * executable, but it must exist on the machine that will launch edge chromium.
    *
-   * @param {string} path The path to the edgedriver binary to use.
+   * @param {string} path The path to the msedgedriver binary to use.
    * @return {!Options} A self reference.
    */
   setEdgeChromiumBinaryPath(path) {
     return this.setBinaryPath(path)
+  }
+
+  /**
+   * Changes the browser name to 'webview2' to enable
+   * <a href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/webdriver">
+   *   test automation of WebView2 apps with Microsoft Edge WebDriver
+   * </a>
+   *
+   * @param {boolean} enable  flag to enable or disable the 'webview2' usage
+   */
+  useWebView(enable) {
+    const browserName = enable ? 'webview2' : Browser.EDGE
+    return this.setBrowserName(browserName)
   }
 }
 
@@ -153,8 +148,16 @@ class Driver extends chromium.Driver {
   static createSession(opt_config, opt_serviceExecutor) {
     let caps = opt_config || new Options()
     return /** @type {!Driver} */ (
-      super.createSession(caps, opt_serviceExecutor)
+      super.createSession(caps, opt_serviceExecutor, 'ms', EDGE_CAPABILITY_KEY)
     )
+  }
+
+  /**
+   * returns new instance of edge driver service
+   * @returns {remote.DriverService}
+   */
+  static getDefaultService() {
+    return new ServiceBuilder().build()
   }
 
   /**
@@ -165,48 +168,8 @@ class Driver extends chromium.Driver {
   setFileDetector() {}
 }
 
-/**
- * Sets the default service to use for new Edge instances.
- * @param {!remote.DriverService} service The service to use.
- * @throws {Error} If the default service is currently running.
- */
-function setDefaultService(service) {
-  if (defaultService && defaultService.isRunning()) {
-    throw Error(
-      'The previously configured EdgeDriver service is still running. ' +
-        'You must shut it down before you may adjust its configuration.'
-    )
-  }
-  defaultService = service
-}
-
-/**
- * Returns the default Microsoft Edge driver service. If such a service has
- * not been configured, one will be constructed using the default configuration
- * for a MicrosoftWebDriver executable found on the system PATH.
- * @return {!remote.DriverService} The default Microsoft Edge driver service.
- */
-function getDefaultService() {
-  if (!defaultService) {
-    defaultService = new ServiceBuilder().build()
-  }
-  return defaultService
-}
-
-/**
- * _Synchronously_ attempts to locate the chromedriver executable on the current
- * system.
- *
- * @return {?string} the located executable, or `null`.
- */
-function locateSynchronously() {
-  return io.findInPath(EDGEDRIVER_CHROMIUM_EXE, true)
-}
-
 Options.prototype.BROWSER_NAME_VALUE = Browser.EDGE
-Options.prototype.CAPABILITY_KEY = 'ms:edgeOptions'
-Driver.prototype.VENDOR_CAPABILITY_PREFIX = 'ms'
-Driver.getDefaultService = getDefaultService
+Options.prototype.CAPABILITY_KEY = EDGE_CAPABILITY_KEY
 
 // PUBLIC API
 
@@ -214,7 +177,4 @@ module.exports = {
   Driver,
   Options,
   ServiceBuilder,
-  getDefaultService,
-  setDefaultService,
-  locateSynchronously,
 }

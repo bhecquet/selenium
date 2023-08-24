@@ -20,10 +20,59 @@ package org.openqa.selenium.remote;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.internal.Require;
 
-/**
- * Used to identify a browser based on its name.
- */
+/** Used to identify a browser based on its name. */
 public interface Browser {
+
+  Browser CHROME = () -> "chrome";
+  Browser EDGE =
+      new Browser() {
+        @Override
+        public String browserName() {
+          return "MicrosoftEdge";
+        }
+
+        @Override
+        public boolean is(String browserName) {
+          return browserName().equals(browserName) || "msedge".equals(browserName);
+        }
+      };
+  Browser HTMLUNIT = () -> "htmlunit";
+  Browser IE = () -> "internet explorer";
+  Browser FIREFOX = () -> "firefox";
+  Browser OPERA =
+      new Browser() {
+        @Override
+        public String browserName() {
+          return "opera";
+        }
+
+        @Override
+        public boolean is(String browserName) {
+          return browserName().equals(browserName);
+        }
+      };
+  Browser SAFARI =
+      new Browser() {
+        @Override
+        public String browserName() {
+          return "safari";
+        }
+
+        public boolean is(String browserName) {
+          return browserName().equals(browserName) || "Safari".equals(browserName);
+        }
+      };
+  Browser SAFARI_TECH_PREVIEW =
+      new Browser() {
+        @Override
+        public String browserName() {
+          return "Safari Technology Preview";
+        }
+
+        public boolean is(String browserName) {
+          return browserName().equals(browserName);
+        }
+      };
 
   String browserName();
 
@@ -35,43 +84,6 @@ public interface Browser {
     Require.nonNull("Capabilities", caps);
     return is(caps.getBrowserName());
   }
-
-  Browser CHROME = () -> "chrome";
-  Browser EDGE = new Browser() {
-    @Override
-    public String browserName() {
-      return "MicrosoftEdge";
-    }
-
-    @Override
-    public boolean is(String browserName) {
-      return browserName().equals(browserName) || "msedge".equals(browserName);
-    }
-  };
-  Browser HTMLUNIT = () -> "htmlunit";
-  Browser IE = () -> "internet explorer";
-  Browser FIREFOX = () -> "firefox";
-  Browser OPERA = new Browser() {
-    @Override
-    public String browserName() {
-      return "opera";
-    }
-
-    @Override
-    public boolean is(String browserName) {
-      return browserName().equals(browserName);
-    }
-  };
-  Browser SAFARI = new Browser() {
-    @Override
-    public String browserName() {
-      return "safari";
-    }
-
-    public boolean is(String browserName) {
-      return browserName().equals(browserName) || "Safari".equals(browserName);
-    }
-  };
 
   default String toJson() {
     return browserName();

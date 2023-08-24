@@ -26,51 +26,31 @@ import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openqa.selenium.json.Json.MAP_TYPE;
 
 import com.google.common.collect.ImmutableMap;
-
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.openqa.selenium.Capabilities;
-import org.openqa.selenium.ImmutableCapabilities;
-import org.openqa.selenium.Platform;
-import org.openqa.selenium.json.Json;
-import org.openqa.selenium.testing.UnitTests;
-
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.openqa.selenium.Capabilities;
+import org.openqa.selenium.ImmutableCapabilities;
+import org.openqa.selenium.Platform;
+import org.openqa.selenium.json.Json;
 
-@Category(UnitTests.class)
-public class NewSessionPayloadTest {
-
-  @Test
-  public void shouldIndicateDownstreamOssDialect() {
-    Map<String, Map<String, String>> caps = singletonMap(
-        "desiredCapabilities", singletonMap(
-            "browserName", "cheese"));
-
-    try (NewSessionPayload payload = NewSessionPayload.create(caps)) {
-      assertEquals(singleton(Dialect.OSS), payload.getDownstreamDialects());
-    }
-
-    String json = new Json().toJson(caps);
-    try (NewSessionPayload payload = NewSessionPayload.create(new StringReader(json))) {
-      assertEquals(singleton(Dialect.OSS), payload.getDownstreamDialects());
-    }
-  }
+@Tag("UnitTests")
+class NewSessionPayloadTest {
 
   @Test
-  public void shouldIndicateDownstreamW3cDialect() {
-    Map<String, Map<String, Map<String, String>>> caps = singletonMap(
-        "capabilities", singletonMap(
-            "alwaysMatch", singletonMap(
-                "browserName", "cheese")));
+  void shouldIndicateDownstreamW3cDialect() {
+    Map<String, Map<String, Map<String, String>>> caps =
+        singletonMap(
+            "capabilities", singletonMap("alwaysMatch", singletonMap("browserName", "cheese")));
 
     try (NewSessionPayload payload = NewSessionPayload.create(caps)) {
       assertEquals(singleton(Dialect.W3C), payload.getDownstreamDialects());
@@ -83,158 +63,130 @@ public class NewSessionPayloadTest {
   }
 
   @Test
-  public void shouldDefaultToAssumingADownstreamOssDialect() {
-    Map<String, Object> caps = emptyMap();
-    try (NewSessionPayload payload = NewSessionPayload.create(caps)) {
-      assertEquals(singleton(Dialect.OSS), payload.getDownstreamDialects());
-    }
+  void shouldReturnAlwaysMatchIfNoFirstMatchIsPresent() {
+    List<Capabilities> capabilities =
+        create(
+            singletonMap(
+                "capabilities",
+                singletonMap("alwaysMatch", singletonMap("browserName", "cheese"))));
 
-    String json = new Json().toJson(caps);
-    try (NewSessionPayload payload = NewSessionPayload.create(new StringReader(json))) {
-      assertEquals(singleton(Dialect.OSS), payload.getDownstreamDialects());
-    }
-  }
-
-  @Test
-  public void shouldOfferStreamOfSingleOssCapabilitiesIfThatIsOnlyOption() {
-    List<Capabilities> capabilities = create(singletonMap(
-        "desiredCapabilities", singletonMap(
-            "browserName", "cheese")));
-
-    assertEquals(capabilities.toString(), 1, capabilities.size());
+    assertEquals(1, capabilities.size(), capabilities.toString());
     assertEquals("cheese", capabilities.get(0).getBrowserName());
   }
 
   @Test
-  public void shouldReturnAlwaysMatchIfNoFirstMatchIsPresent() {
-    List<Capabilities> capabilities = create(singletonMap(
-        "capabilities", singletonMap(
-            "alwaysMatch", singletonMap(
-                "browserName", "cheese"))));
+  void shouldReturnEachFirstMatchIfNoAlwaysMatchIsPresent() {
+    List<Capabilities> capabilities =
+        create(
+            singletonMap(
+                "capabilities",
+                singletonMap(
+                    "firstMatch",
+                    asList(
+                        singletonMap("browserName", "cheese"),
+                        singletonMap("browserName", "peas")))));
 
-    assertEquals(capabilities.toString(), 1, capabilities.size());
-    assertEquals("cheese", capabilities.get(0).getBrowserName());
-  }
-
-  @Test
-  public void shouldReturnEachFirstMatchIfNoAlwaysMatchIsPresent() {
-    List<Capabilities> capabilities = create(singletonMap(
-        "capabilities", singletonMap(
-            "firstMatch", asList(
-                singletonMap("browserName", "cheese"),
-                singletonMap("browserName", "peas")))));
-
-    assertEquals(capabilities.toString(), 2, capabilities.size());
+    assertEquals(2, capabilities.size(), capabilities.toString());
     assertEquals("cheese", capabilities.get(0).getBrowserName());
     assertEquals("peas", capabilities.get(1).getBrowserName());
   }
 
   @Test
-  public void shouldOfferStreamOfW3cCapabilitiesIfPresent() {
-    List<Capabilities> capabilities = create(ImmutableMap.of(
-        "desiredCapabilities", singletonMap(
-            "browserName", "cheese"),
-        "capabilities", singletonMap(
-            "alwaysMatch", singletonMap(
-                "browserName", "peas"))));
+  void shouldOfferStreamOfW3cCapabilitiesIfPresent() {
+    List<Capabilities> capabilities =
+        create(
+            ImmutableMap.of(
+                "capabilities", singletonMap("alwaysMatch", singletonMap("browserName", "peas"))));
 
     // We expect a synthetic w3c capability for the mismatching OSS capabilities
-    assertEquals(capabilities.toString(), 2, capabilities.size());
-    assertEquals("peas", capabilities.get(1).getBrowserName());
+    assertEquals(1, capabilities.size(), capabilities.toString());
+    assertEquals("peas", capabilities.get(0).getBrowserName());
   }
 
   @Test
-  public void shouldMergeAlwaysAndFirstMatches() {
-    List<Capabilities> capabilities = create(singletonMap(
-        "capabilities", ImmutableMap.of(
-            "alwaysMatch", singletonMap(
-                "se:cake", "also cheese"),
-            "firstMatch", asList(
-                singletonMap("browserName", "cheese"),
-                singletonMap("browserName", "peas")))));
+  void shouldMergeAlwaysAndFirstMatches() {
+    List<Capabilities> capabilities =
+        create(
+            singletonMap(
+                "capabilities",
+                ImmutableMap.of(
+                    "alwaysMatch", singletonMap("se:cake", "also cheese"),
+                    "firstMatch",
+                        asList(
+                            singletonMap("browserName", "cheese"),
+                            singletonMap("browserName", "peas")))));
 
-    assertEquals(capabilities.toString(), 2, capabilities.size());
+    assertEquals(2, capabilities.size(), capabilities.toString());
     assertEquals("cheese", capabilities.get(0).getBrowserName());
     assertEquals("also cheese", capabilities.get(0).getCapability("se:cake"));
     assertEquals("peas", capabilities.get(1).getBrowserName());
     assertEquals("also cheese", capabilities.get(1).getCapability("se:cake"));
-
   }
 
-  // The name for the platform capability changed from "platform" to "platformName" in the spec.
   @Test
-  public void shouldCorrectlyExtractPlatformNameFromOssCapabilities() {
-    List<Capabilities> capabilities = create(singletonMap(
-        "desiredCapabilities", singletonMap(
-            "platform", "linux")));
+  void shouldCorrectlyExtractPlatformFromW3cCapabilities() {
+    List<Capabilities> capabilities =
+        create(
+            singletonMap(
+                "capabilities",
+                singletonMap("alwaysMatch", singletonMap("platformName", "linux"))));
 
     assertEquals(Platform.LINUX, capabilities.get(0).getPlatformName());
-    assertEquals(Platform.LINUX, capabilities.get(0).getCapability("platform"));
-    assertNull(capabilities.get(0).getCapability("platformName"));
   }
 
   @Test
-  public void shouldCorrectlyExtractPlatformFromW3cCapabilities() {
-    List<Capabilities> capabilities = create(singletonMap(
-        "capabilities", singletonMap(
-            "alwaysMatch", singletonMap(
-                "platformName", "linux"))));
-
-    assertEquals(Platform.LINUX, capabilities.get(0).getPlatformName());
-    assertNull(capabilities.get(0).getCapability("platform"));
-    assertEquals("linux", capabilities.get(0).getCapability("platformName"));
-  }
-
-  @Test
-  public void shouldValidateW3cCapabilitiesByComplainingAboutKeysThatAreNotExtensions() {
+  void shouldValidateW3cCapabilitiesByComplainingAboutKeysThatAreNotExtensions() {
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> create(singletonMap(
-            "capabilities", singletonMap(
-                "alwaysMatch", singletonMap(
-                    "cake", "cheese")))));
+        .isThrownBy(
+            () ->
+                create(
+                    singletonMap(
+                        "capabilities",
+                        singletonMap("alwaysMatch", singletonMap("cake", "cheese")))));
   }
 
   @Test
-  public void shouldValidateW3cCapabilitiesByComplainingAboutDuplicateFirstAndAlwaysMatchKeys() {
+  void shouldValidateW3cCapabilitiesByComplainingAboutDuplicateFirstAndAlwaysMatchKeys() {
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> create(singletonMap(
-            "capabilities", ImmutableMap.of(
-                "alwaysMatch", singletonMap(
-                    "se:cake", "cheese"),
-                "firstMatch", singletonList(
-                    singletonMap("se:cake", "sausages"))))));
+        .isThrownBy(
+            () ->
+                create(
+                    singletonMap(
+                        "capabilities",
+                        ImmutableMap.of(
+                            "alwaysMatch", singletonMap("se:cake", "cheese"),
+                            "firstMatch", singletonList(singletonMap("se:cake", "sausages"))))));
   }
 
   @Test
-  public void convertEverythingToFirstMatchOnlyIfPayloadContainsAlwaysMatchSectionAndOssCapabilities() {
-    List<Capabilities> capabilities = create(ImmutableMap.of(
-        "desiredCapabilities", ImmutableMap.of(
-            "browserName", "firefox",
-            "platform", "WINDOWS"),
-        "capabilities", ImmutableMap.of(
-            "alwaysMatch", singletonMap(
-                "platformName", "macos"),
-            "firstMatch", asList(
-                singletonMap("browserName", "foo"),
-                singletonMap("browserName", "firefox")))));
+  void convertEverythingToFirstMatchOnlyIfPayloadContainsAlwaysMatchSectionAndOssCapabilities() {
+    List<Capabilities> capabilities =
+        create(
+            ImmutableMap.of(
+                "capabilities",
+                ImmutableMap.of(
+                    "alwaysMatch", singletonMap("platformName", "macos"),
+                    "firstMatch",
+                        asList(
+                            singletonMap("browserName", "foo"),
+                            singletonMap("browserName", "firefox")))));
 
-    assertEquals(asList(
-        // From OSS
-        new ImmutableCapabilities("browserName", "firefox", "platform", "WINDOWS"),
-        // Generated from OSS
-        new ImmutableCapabilities("browserName", "firefox", "platformName", "windows"),
-        // From the actual W3C capabilities
-        new ImmutableCapabilities("browserName", "foo", "platformName", "macos"),
-        new ImmutableCapabilities("browserName", "firefox", "platformName", "macos")),
-                 capabilities);
+    assertEquals(
+        asList(
+            // From the actual W3C capabilities
+            new ImmutableCapabilities("browserName", "foo", "platformName", "macos"),
+            new ImmutableCapabilities("browserName", "firefox", "platformName", "macos")),
+        capabilities);
   }
 
   @Test
-  public void forwardsMetaDataAssociatedWithARequest() throws IOException {
-    try (NewSessionPayload payload = NewSessionPayload.create(    ImmutableMap.of(
-        "desiredCapabilities", EMPTY_MAP,
-        "cloud:user", "bob",
-        "cloud:key", "there is no cake"))) {
+  void forwardsMetaDataAssociatedWithARequest() throws IOException {
+    try (NewSessionPayload payload =
+        NewSessionPayload.create(
+            ImmutableMap.of(
+                "capabilities", ImmutableMap.of("alwaysMatch", EMPTY_MAP),
+                "cloud:user", "bob",
+                "cloud:key", "there is no cake"))) {
       StringBuilder toParse = new StringBuilder();
       payload.writeTo(toParse);
       Map<String, Object> seen = new Json().toType(toParse.toString(), MAP_TYPE);
@@ -245,10 +197,14 @@ public class NewSessionPayloadTest {
   }
 
   @Test
-  public void doesNotForwardRequiredCapabilitiesAsTheseAreVeryLegacy() throws IOException {
-    try (NewSessionPayload payload = NewSessionPayload.create(ImmutableMap.of(
-        "capabilities", EMPTY_MAP,
-        "requiredCapabilities", singletonMap("key", "so it's not empty")))) {
+  void doesNotForwardRequiredCapabilitiesAsTheseAreVeryLegacy() throws IOException {
+    try (NewSessionPayload payload =
+        NewSessionPayload.create(
+            ImmutableMap.of(
+                "capabilities",
+                EMPTY_MAP,
+                "requiredCapabilities",
+                singletonMap("key", "so it's not empty")))) {
       StringBuilder toParse = new StringBuilder();
       payload.writeTo(toParse);
       Map<String, Object> seen = new Json().toType(toParse.toString(), MAP_TYPE);
@@ -258,10 +214,13 @@ public class NewSessionPayloadTest {
   }
 
   @Test
-  public void shouldPreserveMetadata() throws IOException {
-    Map<String, Object> raw = ImmutableMap.of(
-      "capabilities", singletonMap("alwaysMatch", singletonMap("browserName", "cheese")),
-      "se:meta", "cheese is good");
+  void shouldPreserveMetadata() throws IOException {
+    Map<String, Object> raw =
+        ImmutableMap.of(
+            "capabilities",
+            singletonMap("alwaysMatch", singletonMap("browserName", "cheese")),
+            "se:meta",
+            "cheese is good");
 
     try (NewSessionPayload payload = NewSessionPayload.create(raw)) {
       StringBuilder toParse = new StringBuilder();
@@ -273,10 +232,13 @@ public class NewSessionPayloadTest {
   }
 
   @Test
-  public void shouldExposeMetaData() {
-    Map<String, Object> raw = ImmutableMap.of(
-      "capabilities", singletonMap("alwaysMatch", singletonMap("browserName", "cheese")),
-      "se:meta", "cheese is good");
+  void shouldExposeMetaData() {
+    Map<String, Object> raw =
+        ImmutableMap.of(
+            "capabilities",
+            singletonMap("alwaysMatch", singletonMap("browserName", "cheese")),
+            "se:meta",
+            "cheese is good");
 
     try (NewSessionPayload payload = NewSessionPayload.create(raw)) {
       Map<String, Object> seen = payload.getMetadata();
@@ -285,7 +247,7 @@ public class NewSessionPayloadTest {
   }
 
   @Test
-  public void nullValuesInMetaDataAreIgnored() {
+  void nullValuesInMetaDataAreIgnored() {
     Map<String, Object> raw = new HashMap<>();
     raw.put("capabilities", singletonMap("alwaysMatch", singletonMap("browserName", "cheese")));
     raw.put("se:bad", null);
@@ -298,10 +260,11 @@ public class NewSessionPayloadTest {
   }
 
   @Test
-  public void keysUsedForStoringCapabilitiesAreIgnoredFromMetadata() {
-    Map<String, Object> raw = ImmutableMap.of(
-      "capabilities", singletonMap("alwaysMatch", singletonMap("browserName", "cheese")),
-      "desiredCapabilities", emptyMap());
+  void keysUsedForStoringCapabilitiesAreIgnoredFromMetadata() {
+    Map<String, Object> raw =
+        ImmutableMap.of(
+            "capabilities", singletonMap("alwaysMatch", singletonMap("browserName", "cheese")),
+            "desiredCapabilities", emptyMap());
 
     try (NewSessionPayload payload = NewSessionPayload.create(raw)) {
       Map<String, Object> seen = payload.getMetadata();

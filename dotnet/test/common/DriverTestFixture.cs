@@ -1,13 +1,14 @@
 using NUnit.Framework;
 using OpenQA.Selenium.Environment;
 using System;
-using OpenQA.Selenium.Remote;
+using static NUnit.Framework.Interfaces.ResultState;
 
 namespace OpenQA.Selenium
 {
     public abstract class DriverTestFixture
     {
         public string alertsPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("alerts.html");
+        public string blankPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("blank.html");
         public string macbethPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("macbeth.html");
         public string macbethTitle = "Macbeth: Entire Play";
 
@@ -24,6 +25,8 @@ namespace OpenQA.Selenium
         public string formsTitle = "We Leave From Here";
 
         public string javascriptPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("javascriptPage.html");
+
+        public string loginPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("login.html");
 
         public string clickEventPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("clickEventPage.html");
 
@@ -69,6 +72,7 @@ namespace OpenQA.Selenium
         public string mapVisibilityPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("map_visibility.html");
         public string mouseTrackerPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("mousePositionTracker.html");
         public string mouseOverPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("mouseOver.html");
+        public string mouseInteractionPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("mouse_interaction.html");
         public string readOnlyPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("readOnlyPage.html");
         public string clicksPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("clicks.html");
         public string booleanAttributes = EnvironmentManager.Instance.UrlBuilder.WhereIs("booleanAttributes.html");
@@ -81,6 +85,8 @@ namespace OpenQA.Selenium
         public string authenticationPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("basicAuth");
         public string html5Page = EnvironmentManager.Instance.UrlBuilder.WhereIs("html5Page.html");
         public string shadowRootPage = EnvironmentManager.Instance.UrlBuilder.WhereIs("shadowRootPage.html");
+        public string scrollFrameOutOfViewport = EnvironmentManager.Instance.UrlBuilder.WhereIs("scrolling_tests/frame_with_nested_scrolling_frame_out_of_view.html");
+        public string scrollFrameInViewport = EnvironmentManager.Instance.UrlBuilder.WhereIs("scrolling_tests/frame_with_nested_scrolling_frame.html");
 
         protected IWebDriver driver;
 
@@ -107,13 +113,22 @@ namespace OpenQA.Selenium
         [OneTimeSetUp]
         public void SetUp()
         {
-            driver = EnvironmentManager.Instance.GetCurrentDriver();
+            driver = EnvironmentManager.Instance.CreateFreshDriver();
         }
 
         [OneTimeTearDown]
         public void TearDown()
         {
             // EnvironmentManager.Instance.CloseCurrentDriver();
+        }
+
+        [TearDown]
+        public void ResetOnError()
+        {
+            if (TestContext.CurrentContext.Result.Outcome == Error)
+            {
+                driver = EnvironmentManager.Instance.CreateFreshDriver();
+            }
         }
 
         /*

@@ -17,20 +17,19 @@
 
 package org.openqa.selenium.grid.config;
 
-import org.junit.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-public class TomlConfigTest {
+class TomlConfigTest {
 
   @Test
-  public void shouldUseATableAsASection() {
+  void shouldUseATableAsASection() {
     String raw = "[cheeses]\nselected=brie";
     Config config = new TomlConfig(new StringReader(raw));
 
@@ -38,30 +37,65 @@ public class TomlConfigTest {
   }
 
   @Test
-  public void shouldContainConfigFromArrayOfTables() {
-    String[] rawConfig = new String[]{
-      "[cheeses]",
-      "default = manchego",
-      "[[cheeses.type]]",
-      "name = \"soft cheese\"",
-      "default = \"brie\"",
-      "[[cheeses.type]]",
-      "name = \"Medium-hard cheese\"",
-      "default = \"Emmental\""
-    };
+  void shouldContainConfigFromArrayOfTables() {
+    String[] rawConfig =
+        new String[] {
+          "[cheeses]",
+          "default = manchego",
+          "[[cheeses.type]]",
+          "name = \"soft cheese\"",
+          "default = \"brie\"",
+          "[[cheeses.type]]",
+          "name = \"Medium-hard cheese\"",
+          "default = \"Emmental\""
+        };
     Config config = new TomlConfig(new StringReader(String.join("\n", rawConfig)));
 
     assertThat(config.get("cheeses", "default")).isEqualTo(Optional.of("manchego"));
 
-    List<String> expected = Arrays.asList(
-      "name=soft cheese", "default=brie",
-      "name=Medium-hard cheese", "default=Emmental");
-    assertThat(
-      config.getAll("cheeses", "type").orElse(Collections.emptyList()))
-      .containsAll(expected);
-    assertThat(
-      config.getAll("cheeses", "type").orElse(Collections.emptyList()).subList(0, 2))
-      .containsAll(expected.subList(0, 2));
+    List<String> expected =
+        Arrays.asList(
+            "default=\"brie\"",
+            "name=\"soft cheese\"",
+            Config.DELIMITER,
+            "default=\"Emmental\"",
+            "name=\"Medium-hard cheese\"",
+            Config.DELIMITER);
+    assertThat(config.getAll("cheeses", "type").orElse(Collections.emptyList()))
+        .isEqualTo(expected);
+    assertThat(config.getAll("cheeses", "type").orElse(Collections.emptyList()).subList(0, 2))
+        .isEqualTo(expected.subList(0, 2));
+  }
 
+  @Test
+  void ensureCanReadListOfStrings() {
+    String[] rawConfig =
+        new String[] {"[relay]", "configs = [\"2\", '{\"browserName\": \"chrome\"}']"};
+    Config config = new TomlConfig(new StringReader(String.join("\n", rawConfig)));
+    List<String> expected = Arrays.asList("2", "{\"browserName\": \"chrome\"}");
+    Optional<List<String>> content = config.getAll("relay", "configs");
+    assertThat(content).isEqualTo(Optional.of(expected));
+  }
+
+  @Test
+  void ensureCanReadListOfMaps() {
+    String[] rawConfig =
+        new String[] {
+          "[node]",
+          "detect-drivers = false",
+          "[[node.driver-configuration]]",
+          "display-name = \"htmlunit\"",
+          "[node.driver-configuration.stereotype]",
+          "browserName = \"htmlunit\"",
+          "browserVersion = \"chrome\""
+        };
+    Config config = new TomlConfig(new StringReader(String.join("\n", rawConfig)));
+    List<String> expected =
+        Arrays.asList(
+            "display-name=\"htmlunit\"",
+            "stereotype={\"browserVersion\": \"chrome\",\"browserName\": \"htmlunit\"}",
+            Config.DELIMITER);
+    Optional<List<String>> content = config.getAll("node", "driver-configuration");
+    assertThat(content).isEqualTo(Optional.of(expected));
   }
 }

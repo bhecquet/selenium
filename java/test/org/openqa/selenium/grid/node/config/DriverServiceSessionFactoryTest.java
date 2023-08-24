@@ -30,9 +30,14 @@ import static org.openqa.selenium.remote.CapabilityType.BROWSER_NAME;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-
-import org.junit.Before;
-import org.junit.Test;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.time.Duration;
+import java.util.function.Predicate;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.ImmutableCapabilities;
 import org.openqa.selenium.WebDriverException;
@@ -40,6 +45,7 @@ import org.openqa.selenium.grid.data.CreateSessionRequest;
 import org.openqa.selenium.grid.node.ActiveSession;
 import org.openqa.selenium.internal.Either;
 import org.openqa.selenium.remote.Dialect;
+import org.openqa.selenium.remote.http.ClientConfig;
 import org.openqa.selenium.remote.http.HttpClient;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
@@ -47,20 +53,14 @@ import org.openqa.selenium.remote.service.DriverService;
 import org.openqa.selenium.remote.tracing.DefaultTestTracer;
 import org.openqa.selenium.remote.tracing.Tracer;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.function.Predicate;
-
-public class DriverServiceSessionFactoryTest {
+class DriverServiceSessionFactoryTest {
 
   private Tracer tracer;
   private HttpClient.Factory clientFactory;
   private DriverService.Builder builder;
   private DriverService driverService;
 
-  @Before
+  @BeforeEach
   public void setUp() throws MalformedURLException {
     tracer = DefaultTestTracer.createTracer();
 
@@ -68,13 +68,14 @@ public class DriverServiceSessionFactoryTest {
 
     driverService = mock(DriverService.class);
     when(driverService.getUrl()).thenReturn(new URL("http://localhost:1234/"));
+    when(driverService.getExecutable()).thenReturn("/usr/bin/driver");
 
     builder = mock(DriverService.Builder.class);
     when(builder.build()).thenReturn(driverService);
   }
 
   @Test
-  public void itDelegatesCapabilitiesTestingToPredicate() {
+  void itDelegatesCapabilitiesTestingToPredicate() {
     DriverServiceSessionFactory factory = factoryFor("chrome", builder);
 
     assertThat(factory.test(toPayload("chrome"))).isTrue();
@@ -84,35 +85,40 @@ public class DriverServiceSessionFactoryTest {
   }
 
   @Test
-  public void shouldNotInstantiateSessionIfNoDialectSpecifiedInARequest() {
+  void shouldNotInstantiateSessionIfNoDialectSpecifiedInARequest() {
     DriverServiceSessionFactory factory = factoryFor("chrome", builder);
 
-    Either<WebDriverException, ActiveSession> session = factory.apply(new CreateSessionRequest(
-      ImmutableSet.of(), toPayload("chrome"), ImmutableMap.of()));
+    Either<WebDriverException, ActiveSession> session =
+        factory.apply(
+            new CreateSessionRequest(ImmutableSet.of(), toPayload("chrome"), ImmutableMap.of()));
 
     assertThat(session.isLeft()).isTrue();
     verifyNoInteractions(builder);
   }
 
   @Test
-  public void shouldNotInstantiateSessionIfCapabilitiesDoNotMatch() {
+  void shouldNotInstantiateSessionIfCapabilitiesDoNotMatch() {
     DriverServiceSessionFactory factory = factoryFor("chrome", builder);
 
-    Either<WebDriverException, ActiveSession> session = factory.apply(new CreateSessionRequest(
-      ImmutableSet.of(Dialect.W3C), toPayload("firefox"), ImmutableMap.of()));
+    Either<WebDriverException, ActiveSession> session =
+        factory.apply(
+            new CreateSessionRequest(
+                ImmutableSet.of(Dialect.W3C), toPayload("firefox"), ImmutableMap.of()));
 
     assertThat(session.isLeft()).isTrue();
     verifyNoInteractions(builder);
   }
 
   @Test
-  public void shouldNotInstantiateSessionIfBuilderCanNotBuildService() {
+  void shouldNotInstantiateSessionIfBuilderCanNotBuildService() {
     when(builder.build()).thenThrow(new WebDriverException());
 
     DriverServiceSessionFactory factory = factoryFor("chrome", builder);
 
-    Either<WebDriverException, ActiveSession> session = factory.apply(new CreateSessionRequest(
-      ImmutableSet.of(Dialect.W3C), toPayload("chrome"), ImmutableMap.of()));
+    Either<WebDriverException, ActiveSession> session =
+        factory.apply(
+            new CreateSessionRequest(
+                ImmutableSet.of(Dialect.W3C), toPayload("chrome"), ImmutableMap.of()));
 
     assertThat(session.isLeft()).isTrue();
     verify(builder, times(1)).build();
@@ -120,22 +126,27 @@ public class DriverServiceSessionFactoryTest {
   }
 
   @Test
-  public void shouldNotInstantiateSessionIfRemoteEndReturnsInvalidResponse() throws IOException {
+  void shouldNotInstantiateSessionIfRemoteEndReturnsInvalidResponse() throws IOException {
     HttpClient httpClient = mock(HttpClient.class);
-    when(httpClient.execute(any(HttpRequest.class))).thenReturn(
-        new HttpResponse().setStatus(200).setContent(() -> new ByteArrayInputStream(
-            "Hello, world!".getBytes())));
+    when(httpClient.execute(any(HttpRequest.class)))
+        .thenReturn(
+            new HttpResponse()
+                .setStatus(200)
+                .setContent(() -> new ByteArrayInputStream("Hello, world!".getBytes())));
     when(clientFactory.createClient(any(URL.class))).thenReturn(httpClient);
 
     DriverServiceSessionFactory factory = factoryFor("chrome", builder);
 
-    Either<WebDriverException, ActiveSession> session = factory.apply(new CreateSessionRequest(
-      ImmutableSet.of(Dialect.W3C), toPayload("chrome"), ImmutableMap.of()));
+    Either<WebDriverException, ActiveSession> session =
+        factory.apply(
+            new CreateSessionRequest(
+                ImmutableSet.of(Dialect.W3C), toPayload("chrome"), ImmutableMap.of()));
 
     assertThat(session.isLeft()).isTrue();
 
     verify(builder, times(1)).build();
     verifyNoMoreInteractions(builder);
+    verify(driverService, times(1)).getExecutable();
     verify(driverService, times(1)).start();
     verify(driverService, atLeastOnce()).getUrl();
     verify(driverService, times(1)).stop();
@@ -143,22 +154,31 @@ public class DriverServiceSessionFactoryTest {
   }
 
   @Test
-  public void shouldInstantiateSessionIfEverythingIsOK() throws IOException {
+  void shouldInstantiateSessionIfEverythingIsOK() throws IOException {
     HttpClient httpClient = mock(HttpClient.class);
-    when(httpClient.execute(any(HttpRequest.class))).thenReturn(
-        new HttpResponse().setStatus(200).setContent(() -> new ByteArrayInputStream(
-            "{ \"value\": { \"sessionId\": \"1\", \"capabilities\": {} } }".getBytes())));
-    when(clientFactory.createClient(any(URL.class))).thenReturn(httpClient);
+    when(httpClient.execute(any(HttpRequest.class)))
+        .thenReturn(
+            new HttpResponse()
+                .setStatus(200)
+                .setContent(
+                    () ->
+                        new ByteArrayInputStream(
+                            "{ \"value\": { \"sessionId\": \"1\", \"capabilities\": {} } }"
+                                .getBytes())));
+    when(clientFactory.createClient(any(ClientConfig.class))).thenReturn(httpClient);
 
     DriverServiceSessionFactory factory = factoryFor("chrome", builder);
 
-    Either<WebDriverException, ActiveSession> session = factory.apply(new CreateSessionRequest(
-      ImmutableSet.of(Dialect.W3C), toPayload("chrome"), ImmutableMap.of()));
+    Either<WebDriverException, ActiveSession> session =
+        factory.apply(
+            new CreateSessionRequest(
+                ImmutableSet.of(Dialect.W3C), toPayload("chrome"), ImmutableMap.of()));
 
     assertThat(session.isRight()).isTrue();
 
     verify(builder, times(1)).build();
     verifyNoMoreInteractions(builder);
+    verify(driverService, times(1)).getExecutable();
     verify(driverService, times(1)).start();
     verify(driverService, atLeastOnce()).getUrl();
     verifyNoMoreInteractions(driverService);
@@ -167,7 +187,8 @@ public class DriverServiceSessionFactoryTest {
   private DriverServiceSessionFactory factoryFor(String browser, DriverService.Builder builder) {
     Predicate<Capabilities> predicate = c -> c.getBrowserName().equals(browser);
     ImmutableCapabilities stereotype = new ImmutableCapabilities(BROWSER_NAME, browser);
-    return new DriverServiceSessionFactory(tracer, clientFactory, stereotype, predicate, builder);
+    return new DriverServiceSessionFactory(
+        tracer, clientFactory, Duration.ofSeconds(300), stereotype, predicate, builder);
   }
 
   private Capabilities toPayload(String browserName) {

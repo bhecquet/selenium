@@ -20,7 +20,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
-using OpenQA.Selenium.Internal;
 
 namespace OpenQA.Selenium.Support.Events
 {
@@ -100,6 +99,16 @@ namespace OpenQA.Selenium.Support.Events
         /// Fires after the driver completes finding an element.
         /// </summary>
         public event EventHandler<FindElementEventArgs> FindElementCompleted;
+
+        /// <summary>
+        /// Fires before the driver starts to get a shadow root.
+        /// </summary>
+        public event EventHandler<GetShadowRootEventArgs> GettingShadowRoot;
+
+        /// <summary>
+        /// Fires after the driver completes getting a shadow root.
+        /// </summary>
+        public event EventHandler<GetShadowRootEventArgs> GetShadowRootCompleted;
 
         /// <summary>
         /// Fires before a script is executed.
@@ -427,7 +436,8 @@ namespace OpenQA.Selenium.Support.Events
         /// </para>
         /// <para>
         /// Arguments must be a number (which will be converted to a <see cref="long"/>),
-        /// a <see cref="bool"/>, a <see cref="string"/> or a <see cref="IWebElement"/>.
+        /// a <see cref="bool"/>, a <see cref="string"/> or a <see cref="IWebElement"/>,
+        /// or a <see cref="IWrapsElement"/>.
         /// An exception will be thrown if the arguments do not meet these criteria.
         /// The arguments will be made available to the JavaScript via the "arguments" magic
         /// variable, as if the function were called via "Function.apply"
@@ -488,7 +498,8 @@ namespace OpenQA.Selenium.Support.Events
         /// </para>
         /// <para>
         /// Arguments must be a number (which will be converted to a <see cref="long"/>),
-        /// a <see cref="bool"/>, a <see cref="string"/> or a <see cref="IWebElement"/>.
+        /// a <see cref="bool"/>, a <see cref="string"/> or a <see cref="IWebElement"/>,
+        /// or a <see cref="IWrapsElement"/>.
         /// An exception will be thrown if the arguments do not meet these criteria.
         /// The arguments will be made available to the JavaScript via the "arguments" magic
         /// variable, as if the function were called via "Function.apply"
@@ -723,6 +734,30 @@ namespace OpenQA.Selenium.Support.Events
             if (this.FindElementCompleted != null)
             {
                 this.FindElementCompleted(this, e);
+            }
+        }
+
+        /// <summary>
+        /// Raises the <see cref="OnGettingShadowRoot"/> event.
+        /// </summary>
+        /// <param name="e">A <see cref="GetShadowRootEventArgs"/> that contains the event data.</param>
+        protected virtual void OnGettingShadowRoot(GetShadowRootEventArgs e)
+        {
+            if (this.GettingShadowRoot != null)
+            {
+                this.GettingShadowRoot(this, e);
+            }
+        }
+
+        /// <summary>
+        /// Raises the <see cref="OnGetShadowRootCompleted"/> event.
+        /// </summary>
+        /// <param name="e">A <see cref="GetShadowRootEventArgs"/> that contains the event data.</param>
+        protected virtual void OnGetShadowRootCompleted(GetShadowRootEventArgs e)
+        {
+            if (this.GetShadowRootCompleted != null)
+            {
+                this.GetShadowRootCompleted(this, e);
             }
         }
 
@@ -1561,30 +1596,7 @@ namespace OpenQA.Selenium.Support.Events
             /// <summary>
             /// Gets the value of a JavaScript property of this element.
             /// </summary>
-            /// <param name="propertyName">The name JavaScript the JavaScript property to get the value of.</param>
-            /// <returns>The JavaScript property's current value. Returns a <see langword="null"/> if the
-            /// value is not set or the property does not exist.</returns>
-            [Obsolete("Use the GetDomProperty method instead.")]
-            public string GetProperty(string propertyName)
-            {
-                string elementProperty = string.Empty;
-                try
-                {
-                    elementProperty = this.underlyingElement.GetProperty(propertyName);
-                }
-                catch (Exception ex)
-                {
-                    this.parentDriver.OnException(new WebDriverExceptionEventArgs(this.parentDriver, ex));
-                    throw;
-                }
-
-                return elementProperty;
-            }
-
-            /// <summary>
-            /// Gets the value of a JavaScript property of this element.
-            /// </summary>
-            /// <param name="propertyName">The name JavaScript the JavaScript property to get the value of.</param>
+            /// <param name="propertyName">The name of the JavaScript property to get the value of.</param>
             /// <returns>The JavaScript property's current value. Returns a <see langword="null"/> if the
             /// value is not set or the property does not exist.</returns>
             public string GetDomProperty(string propertyName)
@@ -1634,7 +1646,11 @@ namespace OpenQA.Selenium.Support.Events
                 ISearchContext shadowRoot = null;
                 try
                 {
+                    GetShadowRootEventArgs e = new GetShadowRootEventArgs(this.parentDriver.WrappedDriver, this.underlyingElement);
+                    this.parentDriver.OnGettingShadowRoot(e);
                     shadowRoot = this.underlyingElement.GetShadowRoot();
+                    this.parentDriver.OnGetShadowRootCompleted(e);
+                    shadowRoot = new EventFiringShadowRoot(this.parentDriver, shadowRoot);
                 }
                 catch (Exception ex)
                 {
@@ -1717,7 +1733,7 @@ namespace OpenQA.Selenium.Support.Events
             }
 
             /// <summary>
-            /// Determines whether the specified <see cref="EventFiringWebElement"/> is equal to the current <see cref="EventFiringWebElement"/>. 
+            /// Determines whether the specified <see cref="EventFiringWebElement"/> is equal to the current <see cref="EventFiringWebElement"/>.
             /// </summary>
             /// <param name="obj">The <see cref="EventFiringWebElement"/> to compare to the current <see cref="EventFiringWebElement"/>.</param>
             /// <returns><see langword="true"/> if the specified <see cref="EventFiringWebElement"/> is equal to the current <see cref="EventFiringWebElement"/>; otherwise, <see langword="false"/>.</returns>
@@ -1728,7 +1744,7 @@ namespace OpenQA.Selenium.Support.Events
                 {
                     return false;
                 }
-                
+
                 IWrapsElement otherWrapper = other as IWrapsElement;
                 if (otherWrapper != null)
                 {
@@ -1745,6 +1761,122 @@ namespace OpenQA.Selenium.Support.Events
             public override int GetHashCode()
             {
                 return this.underlyingElement.GetHashCode();
+            }
+        }
+
+        /// <summary>
+        /// EventFiringShadowElement allows you to have access to specific shadow elements
+        /// </summary>
+        private class EventFiringShadowRoot : ISearchContext, IWrapsDriver
+        {
+            private ISearchContext underlyingSearchContext;
+            private EventFiringWebDriver parentDriver;
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="EventFiringShadowRoot"/> class.
+            /// </summary>
+            /// <param name="driver">The <see cref="EventFiringWebDriver"/> instance hosting this element.</param>
+            /// <param name="searchContext">The <see cref="ISearchContext"/> to wrap for event firing.</param>
+            public EventFiringShadowRoot(EventFiringWebDriver driver, ISearchContext searchContext)
+            {
+                this.underlyingSearchContext = searchContext;
+                this.parentDriver = driver;
+            }
+
+            /// <summary>
+            /// Gets the underlying wrapped <see cref="ISearchContext"/>.
+            /// </summary>
+            public ISearchContext WrappedSearchContext
+            {
+                get { return this.underlyingSearchContext; }
+            }
+
+            /// <summary>
+            /// Gets the underlying parent wrapped <see cref="IWebDriver"/>
+            /// </summary>
+            public IWebDriver WrappedDriver
+            {
+                get { return this.parentDriver; }
+            }
+
+            /// <summary>
+            /// Finds the first element in the page that matches the <see cref="By"/> object
+            /// </summary>
+            /// <param name="by">By mechanism to find the element</param>
+            /// <returns>IWebElement object so that you can interaction that object</returns>
+            public IWebElement FindElement(By by)
+            {
+                IWebElement wrappedElement = null;
+                try
+                {
+                    GetShadowRootEventArgs e = new GetShadowRootEventArgs(this.parentDriver.WrappedDriver, this.underlyingSearchContext);
+                    this.parentDriver.OnGettingShadowRoot(e);
+                    IWebElement element = this.underlyingSearchContext.FindElement(by);
+                    this.parentDriver.OnGetShadowRootCompleted(e);
+                    wrappedElement = new EventFiringWebElement(this.parentDriver, element);
+                }
+                catch (Exception ex)
+                {
+                    this.parentDriver.OnException(new WebDriverExceptionEventArgs(this.parentDriver, ex));
+                    throw;
+                }
+
+                return wrappedElement;
+            }
+
+            /// <summary>
+            /// Finds the elements on the page by using the <see cref="By"/> object and returns a ReadOnlyCollection of the Elements on the page
+            /// </summary>
+            /// <param name="by">By mechanism to find the element</param>
+            /// <returns>ReadOnlyCollection of IWebElement</returns>
+            public ReadOnlyCollection<IWebElement> FindElements(By by)
+            {
+                List<IWebElement> wrappedElementList = new List<IWebElement>();
+                try
+                {
+                    GetShadowRootEventArgs e = new GetShadowRootEventArgs(this.parentDriver.WrappedDriver, this.underlyingSearchContext);
+                    this.parentDriver.OnGettingShadowRoot(e);
+                    ReadOnlyCollection<IWebElement> elements = this.underlyingSearchContext.FindElements(by);
+                    this.parentDriver.OnGetShadowRootCompleted(e);
+                    foreach (IWebElement element in elements)
+                    {
+                        IWebElement wrappedElement = this.parentDriver.WrapElement(element);
+                        wrappedElementList.Add(wrappedElement);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    this.parentDriver.OnException(new WebDriverExceptionEventArgs(this.parentDriver, ex));
+                    throw;
+                }
+
+                return wrappedElementList.AsReadOnly();
+            }
+
+            /// <summary>
+            /// Determines whether the specified <see cref="EventFiringShadowRoot"/> is equal to the current <see cref="EventFiringShadowRoot"/>.
+            /// </summary>
+            /// <param name="obj">The <see cref="EventFiringWebElement"/> to compare to the current <see cref="EventFiringShadowRoot"/>.</param>
+            /// <returns><see langword="true"/> if the specified <see cref="EventFiringShadowRoot"/> is equal to the current <see cref="EventFiringShadowRoot"/>; otherwise, <see langword="false"/>.</returns>
+            public override bool Equals(object obj)
+            {
+                ISearchContext other = obj as ISearchContext;
+
+                if (other == null)
+                {
+                    return false;
+                }
+
+                return underlyingSearchContext.Equals(other);
+            }
+
+            /// <summary>
+            /// Return the hash code for this <see cref="EventFiringWebElement"/>.
+            /// </summary>
+            /// <returns>A 32-bit signed integer hash code.</returns>
+            public override int GetHashCode()
+            {
+                return this.underlyingSearchContext.GetHashCode();
             }
         }
     }

@@ -18,17 +18,16 @@
 // Generated source.
 package org.openqa.selenium.lift;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 import org.hamcrest.Description;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.lift.find.BaseFinder;
 import org.openqa.selenium.lift.find.Finder;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Iterator;
-
-
+@Deprecated
 public class Finders {
 
   public static org.openqa.selenium.lift.find.HtmlTagFinder div() {
@@ -130,7 +129,6 @@ public class Finders {
         Collection<WebElement> collection = super.findFrom(context);
         if (!collection.isEmpty()) {
           Iterator<WebElement> iter = collection.iterator();
-          iter.hasNext();
           return Collections.singletonList(iter.next());
         }
         return collection;

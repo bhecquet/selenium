@@ -17,15 +17,9 @@
 
 package org.openqa.selenium;
 
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
 
-@RunWith(Suite.class)
-@Suite.SuiteClasses({
-    ByTest.class,
-    CookieImplementationTest.class,
-    ExecutingAsyncJavascriptTest.class
-})
-public class LargeTests {
-
-}
+@SelectClasses({ByTest.class, CookieImplementationTest.class, ExecutingAsyncJavascriptTest.class})
+@Suite
+class LargeTests {}

@@ -17,8 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-require 'net/http'
-
 module Selenium
   module WebDriver
     module Chrome
@@ -27,20 +25,6 @@ module Selenium
       autoload :Profile, 'selenium/webdriver/chrome/profile'
       autoload :Options, 'selenium/webdriver/chrome/options'
       autoload :Service, 'selenium/webdriver/chrome/service'
-
-      def self.driver_path=(path)
-        WebDriver.logger.deprecate 'Selenium::WebDriver::Chrome#driver_path=',
-                                   'Selenium::WebDriver::Chrome::Service#driver_path=',
-                                   id: :driver_path
-        Selenium::WebDriver::Chrome::Service.driver_path = path
-      end
-
-      def self.driver_path
-        WebDriver.logger.deprecate 'Selenium::WebDriver::Chrome#driver_path',
-                                   'Selenium::WebDriver::Chrome::Service#driver_path',
-                                   id: :driver_path
-        Selenium::WebDriver::Chrome::Service.driver_path
-      end
 
       def self.path=(path)
         Platform.assert_executable path

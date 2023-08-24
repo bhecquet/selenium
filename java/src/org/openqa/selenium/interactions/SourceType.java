@@ -17,13 +17,12 @@
 
 package org.openqa.selenium.interactions;
 
-/**
- * One of the allowing types for an {@link InputSource}.
- */
+/** One of the allowing types for an {@link InputSource}. */
 public enum SourceType {
   KEY("key"),
   NONE(null),
-  POINTER("pointer");
+  POINTER("pointer"),
+  WHEEL("wheel");
 
   private final String type;
 
