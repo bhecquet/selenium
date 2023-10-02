@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package org.openqa.selenium.devtools.v114;
+package org.openqa.selenium.devtools.v117;
 
 import static java.net.HttpURLConnection.HTTP_OK;
 
@@ -24,12 +24,7 @@ import com.google.common.io.ByteStreams;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.AbstractMap;
-import java.util.Base64;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 import org.openqa.selenium.UsernameAndPassword;
 import org.openqa.selenium.devtools.Command;
@@ -37,40 +32,35 @@ import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.DevToolsException;
 import org.openqa.selenium.devtools.Event;
 import org.openqa.selenium.devtools.idealized.Network;
-import org.openqa.selenium.devtools.v114.fetch.Fetch;
-import org.openqa.selenium.devtools.v114.fetch.model.AuthChallengeResponse;
-import org.openqa.selenium.devtools.v114.fetch.model.AuthRequired;
-import org.openqa.selenium.devtools.v114.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v114.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v114.fetch.model.RequestPaused;
-import org.openqa.selenium.devtools.v114.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v114.network.model.Request;
+import org.openqa.selenium.devtools.v117.fetch.Fetch;
+import org.openqa.selenium.devtools.v117.fetch.model.*;
+import org.openqa.selenium.devtools.v117.network.model.Request;
 import org.openqa.selenium.internal.Either;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
 
-public class v114Network extends Network<AuthRequired, RequestPaused> {
+public class v117Network extends Network<AuthRequired, RequestPaused> {
 
-  private static final Logger LOG = Logger.getLogger(v114Network.class.getName());
+  private static final Logger LOG = Logger.getLogger(v117Network.class.getName());
 
-  public v114Network(DevTools devTools) {
+  public v117Network(DevTools devTools) {
     super(devTools);
   }
 
   @Override
   protected Command<Void> setUserAgentOverride(UserAgent userAgent) {
-    return org.openqa.selenium.devtools.v114.network.Network.setUserAgentOverride(
+    return org.openqa.selenium.devtools.v117.network.Network.setUserAgentOverride(
         userAgent.userAgent(), userAgent.acceptLanguage(), userAgent.platform(), Optional.empty());
   }
 
   @Override
   protected Command<Void> enableNetworkCaching() {
-    return org.openqa.selenium.devtools.v114.network.Network.setCacheDisabled(false);
+    return org.openqa.selenium.devtools.v117.network.Network.setCacheDisabled(false);
   }
 
   @Override
   protected Command<Void> disableNetworkCaching() {
-    return org.openqa.selenium.devtools.v114.network.Network.setCacheDisabled(true);
+    return org.openqa.selenium.devtools.v117.network.Network.setCacheDisabled(true);
   }
 
   @Override
@@ -148,7 +138,7 @@ public class v114Network extends Network<AuthRequired, RequestPaused> {
         bodyIsBase64Encoded = false;
       }
 
-      List<Map.Entry<String, String>> headers = new LinkedList<>();
+      List<Map.Entry<String, String>> headers = new ArrayList<>();
       pausedReq
           .getResponseHeaders()
           .ifPresent(
@@ -198,11 +188,8 @@ public class v114Network extends Network<AuthRequired, RequestPaused> {
       return continueWithoutModification(pausedReq);
     }
 
-    List<HeaderEntry> headers = new LinkedList<>();
-    req.getHeaderNames()
-        .forEach(
-            name ->
-                req.getHeaders(name).forEach(value -> headers.add(new HeaderEntry(name, value))));
+    List<HeaderEntry> headers = new ArrayList<>();
+    req.forEachHeader((name, value) -> headers.add(new HeaderEntry(name, value)));
 
     return Fetch.continueRequest(
         pausedReq.getRequestId(),
@@ -215,11 +202,8 @@ public class v114Network extends Network<AuthRequired, RequestPaused> {
 
   @Override
   protected Command<Void> fulfillRequest(RequestPaused pausedReq, HttpResponse res) {
-    List<HeaderEntry> headers = new LinkedList<>();
-    res.getHeaderNames()
-        .forEach(
-            name ->
-                res.getHeaders(name).forEach(value -> headers.add(new HeaderEntry(name, value))));
+    List<HeaderEntry> headers = new ArrayList<>();
+    res.forEachHeader((name, value) -> headers.add(new HeaderEntry(name, value)));
 
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     try (InputStream is = res.getContent().get()) {

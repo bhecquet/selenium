@@ -14,17 +14,24 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-package org.openqa.selenium.interactions;
 
-import org.junit.platform.suite.api.SelectClasses;
-import org.junit.platform.suite.api.Suite;
+package org.openqa.selenium.remote.tracing;
 
-@SelectClasses({
-  DefaultKeyboardTest.class,
-  DefaultMouseTest.class,
-  CombinedInputActionsTest.class,
-  CompositeActionTest.class,
-  DragAndDropTest.class
-})
-@Suite
-class InteractionTests {}
+public interface AttributeMap {
+
+  void put(String key, String value);
+
+  void put(String key, long value);
+
+  void put(String key, double value);
+
+  void put(String key, boolean value);
+
+  void put(String key, String... value);
+
+  void put(String key, long... value);
+
+  void put(String key, double... value);
+
+  void put(String key, boolean... value);
+}

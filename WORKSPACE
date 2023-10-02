@@ -20,6 +20,7 @@ load("@apple_rules_lint//lint:setup.bzl", "lint_setup")
 # Add your linters here.
 lint_setup({
     "java-spotbugs": "//java:spotbugs-config",
+    "rust-rustfmt": "//rust:enable-rustfmt",
 })
 
 http_archive(
@@ -37,9 +38,9 @@ bazel_skylib_workspace()
 
 http_archive(
     name = "rules_python",
-    sha256 = "0a8003b044294d7840ac7d9d73eef05d6ceb682d7516781a4ec62eeb34702578",
-    strip_prefix = "rules_python-0.24.0",
-    url = "https://github.com/bazelbuild/rules_python/releases/download/0.24.0/rules_python-0.24.0.tar.gz",
+    sha256 = "5868e73107a8e85d8f323806e60cad7283f34b32163ea6ff1020cf27abef6036",
+    strip_prefix = "rules_python-0.25.0",
+    url = "https://github.com/bazelbuild/rules_python/releases/download/0.25.0/rules_python-0.25.0.tar.gz",
 )
 
 load("@rules_python//python:repositories.bzl", "py_repositories", "python_register_multi_toolchains")
@@ -61,10 +62,10 @@ python_register_multi_toolchains(
 )
 
 load("@python//:pip.bzl", "multi_pip_parse")
-load("@python//3.11:defs.bzl", interpreter_3_11 = "interpreter")
 load("@python//3.10:defs.bzl", interpreter_3_10 = "interpreter")
-load("@python//3.9:defs.bzl", interpreter_3_9 = "interpreter")
+load("@python//3.11:defs.bzl", interpreter_3_11 = "interpreter")
 load("@python//3.8:defs.bzl", interpreter_3_8 = "interpreter")
+load("@python//3.9:defs.bzl", interpreter_3_9 = "interpreter")
 
 multi_pip_parse(
     name = "py_dev_requirements",
@@ -315,12 +316,12 @@ http_archive(
     url = "https://github.com/p0deje/rules_ruby/archive/9550503e1c1702375e87837d43eb137030edd28a.zip",
 )
 
-load("//rb:ruby_version.bzl", "RUBY_VERSION")
 load(
     "@rules_ruby//ruby:deps.bzl",
     "rb_bundle",
     "rb_register_toolchains",
 )
+load("//rb:ruby_version.bzl", "RUBY_VERSION")
 
 rb_register_toolchains(version = RUBY_VERSION)
 

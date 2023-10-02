@@ -34,6 +34,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use walkdir::{DirEntry, WalkDir};
 
 use crate::downloads::download_to_tmp_folder;
 use crate::files::{parse_version, uncompress, BrowserPath};
@@ -80,7 +81,6 @@ pub const HDIUTIL_DETACH_COMMAND: &str = "hdiutil detach /Volumes/{}";
 pub const CP_VOLUME_COMMAND: &str = "cp -R /Volumes/{}/{}.app {}";
 pub const MV_PAYLOAD_COMMAND: &str = "mv {}/*{}/Payload/*.app {}";
 pub const MV_PAYLOAD_OLD_VERSIONS_COMMAND: &str = "mv {}/Payload/*.app {}";
-pub const MV_SFX_COMMAND: &str = r#"robocopy {}\core {} /e /move"#;
 pub const DASH_VERSION: &str = "{}{}{} -v";
 pub const DASH_DASH_VERSION: &str = "{}{}{} --version";
 pub const DOUBLE_QUOTE: &str = "\"";
@@ -486,7 +486,6 @@ pub trait SeleniumManager {
         let browser_version = self.get_browser_version();
         browser_version.eq_ignore_ascii_case(NIGHTLY)
             || browser_version.eq_ignore_ascii_case(CANARY)
-            || browser_version.contains('a') // This happens in Firefox versions
     }
 
     fn is_browser_version_unstable(&self) -> bool {
@@ -592,6 +591,74 @@ pub trait SeleniumManager {
             self.download_driver()?;
         }
         Ok(driver_path)
+    }
+
+    fn is_driver(&self, entry: &DirEntry) -> bool {
+        let is_file = entry.path().is_file();
+
+        let is_driver = entry
+            .file_name()
+            .to_str()
+            .map(|s| s.contains(&self.get_driver_name_with_extension()))
+            .unwrap_or(false);
+
+        let match_os = entry
+            .path()
+            .to_str()
+            .map(|s| s.contains(self.get_platform_label()))
+            .unwrap_or(false);
+
+        is_file && is_driver && match_os
+    }
+
+    fn is_driver_and_matches_browser_version(&self, entry: &DirEntry) -> bool {
+        let match_driver_version = entry
+            .path()
+            .parent()
+            .unwrap_or(entry.path())
+            .file_name()
+            .map(|s| {
+                s.to_str()
+                    .unwrap_or_default()
+                    .starts_with(&self.get_major_browser_version())
+            })
+            .unwrap_or(false);
+
+        self.is_driver(entry) && match_driver_version
+    }
+
+    fn find_best_driver_from_cache(&self) -> Result<Option<PathBuf>, Box<dyn Error>> {
+        let cache_path = self.get_cache_path()?;
+        let drivers_in_cache_matching_version: Vec<PathBuf> = WalkDir::new(&cache_path)
+            .into_iter()
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| self.is_driver_and_matches_browser_version(entry))
+            .map(|entry| entry.path().to_owned())
+            .collect();
+
+        // First we look for drivers in cache that matches browser version (should work for Chrome and Edge)
+        if !drivers_in_cache_matching_version.is_empty() {
+            Ok(Some(
+                drivers_in_cache_matching_version
+                    .iter()
+                    .last()
+                    .unwrap()
+                    .to_owned(),
+            ))
+        } else {
+            // If not available, we look for the latest available driver in the cache
+            let drivers_in_cache: Vec<PathBuf> = WalkDir::new(&cache_path)
+                .into_iter()
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| self.is_driver(entry))
+                .map(|entry| entry.path().to_owned())
+                .collect();
+            if !drivers_in_cache.is_empty() {
+                Ok(Some(drivers_in_cache.iter().last().unwrap().to_owned()))
+            } else {
+                Ok(None)
+            }
+        }
     }
 
     fn get_major_version(&self, full_version: &str) -> Result<String, Box<dyn Error>> {
@@ -867,24 +934,28 @@ pub trait SeleniumManager {
     }
 
     fn canonicalize_path(&self, path_buf: PathBuf) -> String {
-        let canon_path = path_buf
-            .as_path()
-            .canonicalize()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
-        if WINDOWS.is(self.get_os()) {
-            canon_path.replace(UNC_PREFIX, "")
-        } else {
-            canon_path
+        let mut canon_path = path_buf_to_string(
+            path_buf
+                .as_path()
+                .canonicalize()
+                .unwrap_or(path_buf.clone()),
+        );
+        if WINDOWS.is(self.get_os()) || canon_path.starts_with(UNC_PREFIX) {
+            canon_path = canon_path.replace(UNC_PREFIX, "")
         }
+        if !path_buf_to_string(path_buf.clone()).eq(&canon_path) {
+            self.get_logger().trace(format!(
+                "Path {} has been canonicalized to {}",
+                path_buf.display(),
+                canon_path
+            ));
+        }
+        canon_path
     }
 
     fn get_escaped_path(&self, string_path: String) -> String {
-        let original_path = string_path.clone();
-        let mut escaped_path = string_path;
-        let path = Path::new(&original_path);
+        let mut escaped_path = string_path.clone();
+        let path = Path::new(&string_path);
 
         if path.exists() {
             escaped_path = self.canonicalize_path(path.to_path_buf());
@@ -895,14 +966,16 @@ pub trait SeleniumManager {
                     Command::new_single(format_one_arg(ESCAPE_COMMAND, escaped_path.as_str()));
                 escaped_path = run_shell_command("bash", "-c", escape_command).unwrap_or_default();
                 if escaped_path.is_empty() {
-                    escaped_path = original_path.clone();
+                    escaped_path = string_path.clone();
                 }
             }
         }
-        self.get_logger().trace(format!(
-            "Original path: {} - Escaped path: {}",
-            original_path, escaped_path
-        ));
+        if !string_path.eq(&escaped_path) {
+            self.get_logger().trace(format!(
+                "Path {} has been escaped to {}",
+                string_path, escaped_path
+            ));
+        }
         escaped_path
     }
 

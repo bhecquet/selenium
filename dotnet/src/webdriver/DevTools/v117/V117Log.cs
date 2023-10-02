@@ -1,4 +1,4 @@
-// <copyright file="V114Log.cs" company="WebDriver Committers">
+// <copyright file="V117Log.cs" company="WebDriver Committers">
 // Licensed to the Software Freedom Conservancy (SFC) under one
 // or more contributor license agreements. See the NOTICE file
 // distributed with this work for additional information
@@ -20,22 +20,22 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using OpenQA.Selenium.DevTools.V114.Log;
+using OpenQA.Selenium.DevTools.V117.Log;
 
-namespace OpenQA.Selenium.DevTools.V114
+namespace OpenQA.Selenium.DevTools.V117
 {
     /// <summary>
-    /// Class containing the browser's log as referenced by version 114 of the DevTools Protocol.
+    /// Class containing the browser's log as referenced by version 117 of the DevTools Protocol.
     /// </summary>
-    public class V114Log : DevTools.Log
+    public class V117Log : DevTools.Log
     {
         private LogAdapter adapter;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="V114Log"/> class.
+        /// Initializes a new instance of the <see cref="V117Log"/> class.
         /// </summary>
         /// <param name="adapter">The adapter for the Log domain.</param>
-        public V114Log(LogAdapter adapter)
+        public V117Log(LogAdapter adapter)
         {
             this.adapter = adapter;
             this.adapter.EntryAdded += OnAdapterEntryAdded;
@@ -47,7 +47,7 @@ namespace OpenQA.Selenium.DevTools.V114
         /// <returns>A task that represents the asynchronous operation.</returns>
         public override async Task Enable()
         {
-            await adapter.Enable();
+            await adapter.Enable().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace OpenQA.Selenium.DevTools.V114
         /// <returns>A task that represents the asynchronous operation.</returns>
         public override async Task Disable()
         {
-            await adapter.Disable();
+            await adapter.Disable().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace OpenQA.Selenium.DevTools.V114
         /// <returns>A task that represents the asynchronous operation.</returns>
         public override async Task Clear()
         {
-            await adapter.Clear();
+            await adapter.Clear().ConfigureAwait(false);
         }
 
         private void OnAdapterEntryAdded(object sender, Log.EntryAddedEventArgs e)

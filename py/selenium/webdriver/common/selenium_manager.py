@@ -40,19 +40,22 @@ class SeleniumManager:
 
         :Returns: The Selenium Manager executable location
         """
-        platform = sys.platform
 
-        dirs = {
-            "darwin": "macos",
-            "win32": "windows",
-            "cygwin": "windows",
-        }
+        if os.getenv("SE_MANAGER_PATH"):
+            path = os.getenv("SE_MANAGER_PATH")
+        else:
+            platform = sys.platform
 
-        directory = dirs.get(platform) if dirs.get(platform) else platform
+            dirs = {
+                "darwin": "macos",
+                "win32": "windows",
+                "cygwin": "windows",
+            }
 
-        file = "selenium-manager.exe" if directory == "windows" else "selenium-manager"
+            directory = dirs.get(platform) if dirs.get(platform) else platform
+            file = "selenium-manager.exe" if directory == "windows" else "selenium-manager"
 
-        path = Path(__file__).parent.joinpath(directory, file)
+            path = Path(__file__).parent.joinpath(directory, file)
 
         if not path.is_file() and os.environ["CONDA_PREFIX"]:
             # conda has a separate package selenium-manager, installs in bin
@@ -66,8 +69,8 @@ class SeleniumManager:
         return path
 
     def driver_location(self, options: BaseOptions) -> str:
-        """
-        Determines the path of the correct driver.
+        """Determines the path of the correct driver.
+
         :Args:
          - browser: which browser to get the driver path for.
         :Returns: The driver path to use
@@ -106,8 +109,8 @@ class SeleniumManager:
 
     @staticmethod
     def run(args: List[str]) -> dict:
-        """
-        Executes the Selenium Manager Binary.
+        """Executes the Selenium Manager Binary.
+
         :Args:
          - args: the components of the command being executed.
         :Returns: The log string containing the driver location.
@@ -121,11 +124,9 @@ class SeleniumManager:
         logger.debug(f"Executing process: {command}")
         try:
             if sys.platform == "win32":
-                completed_proc = subprocess.run(
-                    args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW
-                )
+                completed_proc = subprocess.run(args, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW)
             else:
-                completed_proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                completed_proc = subprocess.run(args, capture_output=True)
             stdout = completed_proc.stdout.decode("utf-8").rstrip("\n")
             stderr = completed_proc.stderr.decode("utf-8").rstrip("\n")
             output = json.loads(stdout)

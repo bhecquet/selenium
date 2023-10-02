@@ -1420,6 +1420,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f91339c0467de62360649f8d3e185ca8de4224ff281f66000de5eb2a77a79041"
 
 [[package]]
+name = "same-file"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+dependencies = [
+ "winapi-util",
+]
+
+[[package]]
 name = "sct"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1431,7 +1440,7 @@ dependencies = [
 
 [[package]]
 name = "selenium-manager"
-version = "0.4.12"
+version = "0.4.14"
 dependencies = [
  "assert_cmd",
  "bzip2",
@@ -1453,6 +1462,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml",
+ "walkdir",
  "zip",
 ]
 
@@ -1516,9 +1526,9 @@ dependencies = [
 
 [[package]]
 name = "sevenz-rust"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2b4f55cc8838a27c4717b4bef491e936e31e19510136f31efd8e463343d0c3c"
+checksum = "08f8f9506caeb765a103766f8d32d5a16ba11495e0e6ad44f29a3cd6b1dfe31b"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -1922,6 +1932,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f200f5b12eb75f8c1ed65abd4b2db8a6e1b138a20de009dacee265a2498f3f6"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "walkdir"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d71d857dc86794ca4c280d616f7da00d2dbfd8cd788846559a6813e6aa4b54ee"
+dependencies = [
+ "same-file",
+ "winapi-util",
 ]
 
 [[package]]

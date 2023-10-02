@@ -1,5 +1,5 @@
 {
-  "checksum": "a6f3e704e2deacabf5b897203b267dada426df3b8b8b6e80a1cfe12130b76bb9",
+  "checksum": "495be0038fd3bd2826baeb0433f22c042c1b03eeeb117631135bc6339799addf",
   "crates": {
     "addr2line 0.19.0": {
       "name": "addr2line",
@@ -7636,6 +7636,47 @@
       },
       "license": "Apache-2.0 OR BSL-1.0"
     },
+    "same-file 1.0.6": {
+      "name": "same-file",
+      "version": "1.0.6",
+      "repository": {
+        "Http": {
+          "url": "https://crates.io/api/v1/crates/same-file/1.0.6/download",
+          "sha256": "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "same_file",
+            "crate_root": "src/lib.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        }
+      ],
+      "library_target_name": "same_file",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [],
+          "selects": {
+            "cfg(windows)": [
+              {
+                "id": "winapi-util 0.1.5",
+                "target": "winapi_util"
+              }
+            ]
+          }
+        },
+        "edition": "2018",
+        "version": "1.0.6"
+      },
+      "license": "Unlicense/MIT"
+    },
     "sct 0.7.0": {
       "name": "sct",
       "version": "0.7.0",
@@ -7679,9 +7720,9 @@
       },
       "license": "Apache-2.0/ISC/MIT"
     },
-    "selenium-manager 0.4.12": {
+    "selenium-manager 0.4.14": {
       "name": "selenium-manager",
-      "version": "0.4.12",
+      "version": "0.4.14",
       "repository": null,
       "targets": [
         {
@@ -7754,7 +7795,7 @@
               "target": "serde_json"
             },
             {
-              "id": "sevenz-rust 0.5.0",
+              "id": "sevenz-rust 0.5.2",
               "target": "sevenz_rust"
             },
             {
@@ -7772,6 +7813,10 @@
             {
               "id": "toml 0.7.6",
               "target": "toml"
+            },
+            {
+              "id": "walkdir 2.4.0",
+              "target": "walkdir"
             },
             {
               "id": "zip 0.6.6",
@@ -7794,7 +7839,7 @@
           "selects": {}
         },
         "edition": "2021",
-        "version": "0.4.12"
+        "version": "0.4.14"
       },
       "license": "Apache-2.0"
     },
@@ -8150,13 +8195,13 @@
       },
       "license": "MIT/Apache-2.0"
     },
-    "sevenz-rust 0.5.0": {
+    "sevenz-rust 0.5.2": {
       "name": "sevenz-rust",
-      "version": "0.5.0",
+      "version": "0.5.2",
       "repository": {
         "Http": {
-          "url": "https://crates.io/api/v1/crates/sevenz-rust/0.5.0/download",
-          "sha256": "e2b4f55cc8838a27c4717b4bef491e936e31e19510136f31efd8e463343d0c3c"
+          "url": "https://crates.io/api/v1/crates/sevenz-rust/0.5.2/download",
+          "sha256": "08f8f9506caeb765a103766f8d32d5a16ba11495e0e6ad44f29a3cd6b1dfe31b"
         }
       },
       "targets": [
@@ -8227,7 +8272,7 @@
           }
         },
         "edition": "2021",
-        "version": "0.5.0"
+        "version": "0.5.2"
       },
       "license": "Apache-2.0"
     },
@@ -10299,6 +10344,52 @@
         "version": "0.2.0"
       },
       "license": "MIT/Apache-2.0"
+    },
+    "walkdir 2.4.0": {
+      "name": "walkdir",
+      "version": "2.4.0",
+      "repository": {
+        "Http": {
+          "url": "https://crates.io/api/v1/crates/walkdir/2.4.0/download",
+          "sha256": "d71d857dc86794ca4c280d616f7da00d2dbfd8cd788846559a6813e6aa4b54ee"
+        }
+      },
+      "targets": [
+        {
+          "Library": {
+            "crate_name": "walkdir",
+            "crate_root": "src/lib.rs",
+            "srcs": [
+              "**/*.rs"
+            ]
+          }
+        }
+      ],
+      "library_target_name": "walkdir",
+      "common_attrs": {
+        "compile_data_glob": [
+          "**"
+        ],
+        "deps": {
+          "common": [
+            {
+              "id": "same-file 1.0.6",
+              "target": "same_file"
+            }
+          ],
+          "selects": {
+            "cfg(windows)": [
+              {
+                "id": "winapi-util 0.1.5",
+                "target": "winapi_util"
+              }
+            ]
+          }
+        },
+        "edition": "2018",
+        "version": "2.4.0"
+      },
+      "license": "Unlicense/MIT"
     },
     "want 0.3.0": {
       "name": "want",
@@ -12561,7 +12652,7 @@
   },
   "binary_crates": [],
   "workspace_members": {
-    "selenium-manager 0.4.12": "rust"
+    "selenium-manager 0.4.14": "rust"
   },
   "conditions": {
     "aarch64-apple-darwin": [
